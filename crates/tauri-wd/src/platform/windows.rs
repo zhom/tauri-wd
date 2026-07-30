@@ -9,11 +9,12 @@ use tauri::{Manager, Runtime, WebviewWindow};
 use tokio::sync::oneshot;
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG, COREWEBVIEW2_PRINT_ORIENTATION_LANDSCAPE,
-    COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT, ICoreWebView2, ICoreWebView2_7,
+    COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT, ICoreWebView2, ICoreWebView2_7, ICoreWebView2_21,
     ICoreWebView2CapturePreviewCompletedHandler, ICoreWebView2Environment6,
-    ICoreWebView2ExecuteScriptCompletedHandler, ICoreWebView2PrintToPdfCompletedHandler,
+    ICoreWebView2ExecuteScriptResult, ICoreWebView2PrintToPdfCompletedHandler,
     ICoreWebView2ScriptDialogOpeningEventHandler, ICoreWebView2WebMessageReceivedEventHandler,
 };
+use webview2_com::{CoTaskMemPWSTR, ExecuteScriptWithResultCompletedHandler};
 use windows::Win32::Foundation::HGLOBAL;
 use windows::Win32::System::Com::StructuredStorage::CreateStreamOnHGlobal;
 use windows::Win32::System::Com::{
@@ -117,6 +118,40 @@ impl<R: Runtime> WindowsExecutor<R> {
     }
 }
 
+fn parse_execute_script_result(result: ICoreWebView2ExecuteScriptResult) -> Result<Value, String> {
+    unsafe {
+        let mut succeeded = BOOL::default();
+        result
+            .Succeeded(&raw mut succeeded)
+            .map_err(|error| format!("Failed to read script execution status: {error:?}"))?;
+
+        if succeeded.as_bool() {
+            let mut json = windows::core::PWSTR::null();
+            result
+                .ResultAsJson(&raw mut json)
+                .map_err(|error| format!("Failed to read script result: {error:?}"))?;
+            let json = CoTaskMemPWSTR::from(json).to_string();
+            return Ok(
+                serde_json::from_str(&json).unwrap_or_else(|_| Value::String(json.to_string()))
+            );
+        }
+
+        let exception = result
+            .Exception()
+            .map_err(|error| format!("Failed to read script exception: {error:?}"))?;
+        let mut message = windows::core::PWSTR::null();
+        exception
+            .Message(&raw mut message)
+            .map_err(|error| format!("Failed to read script exception message: {error:?}"))?;
+        let message = CoTaskMemPWSTR::from(message).to_string();
+        if message.is_empty() {
+            Err("JavaScript execution failed".to_string())
+        } else {
+            Err(message)
+        }
+    }
+}
+
 impl<R: Runtime + 'static> WindowsExecutor<R> {
     /// Core WebView2 script execution — no per-webview lock.
     /// Callers that need serialization must acquire the lock from
@@ -134,22 +169,55 @@ impl<R: Runtime + 'static> WindowsExecutor<R> {
                 let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
 
                 if let Ok(webview2) = webview.controller().CoreWebView2() {
+                    // The legacy ExecuteScript API returns JSON null for both JavaScript
+                    // exceptions and successful null values, so it cannot preserve WebDriver
+                    // error semantics.
+                    let webview21: ICoreWebView2_21 = match webview2.cast() {
+                        Ok(webview21) => webview21,
+                        Err(error) => {
+                            if let Ok(mut guard) = tx.lock()
+                                && let Some(tx) = guard.take()
+                            {
+                                let _ = tx.send(Err(format!(
+                                    "WebView2 runtime does not support exception-aware script execution: {error:?}"
+                                )));
+                            }
+                            return;
+                        }
+                    };
                     let script_hstring = HSTRING::from(&script_owned);
+                    let handler_tx = tx.clone();
 
-                    let handler: ICoreWebView2ExecuteScriptCompletedHandler =
-                        ExecuteScriptHandler::new(tx.clone()).into();
+                    let handler = ExecuteScriptWithResultCompletedHandler::create(Box::new(
+                        move |call, result| {
+                            let response = match call {
+                                Ok(()) => result
+                                    .ok_or_else(|| "Script execution returned no result".to_string())
+                                    .and_then(parse_execute_script_result),
+                                Err(error) => Err(format!("Script execution failed: {error:?}")),
+                            };
 
-                    if let Err(e) =
-                        webview2.ExecuteScript(PCWSTR(script_hstring.as_ptr()), &handler)
+                            if let Ok(mut guard) = handler_tx.lock()
+                                && let Some(tx) = guard.take()
+                            {
+                                let _ = tx.send(response);
+                            }
+                            Ok(())
+                        },
+                    ));
+
+                    if let Err(e) = webview21
+                        .ExecuteScriptWithResult(PCWSTR(script_hstring.as_ptr()), &handler)
                     {
                         tracing::error!(
-                            "ExecuteScript call failed for script '{}...': {e:?}",
+                            "ExecuteScriptWithResult call failed for script '{}...': {e:?}",
                             script_preview
                         );
                         if let Ok(mut guard) = tx.lock()
                             && let Some(tx) = guard.take()
                         {
-                            let _ = tx.send(Err(format!("ExecuteScript failed: {e:?}")));
+                            let _ =
+                                tx.send(Err(format!("ExecuteScriptWithResult failed: {e:?}")));
                         }
                     }
                 } else {
@@ -576,7 +644,6 @@ impl<R: Runtime + 'static> PlatformExecutor<R> for WindowsExecutor<R> {
     }
 }
 
-type ScriptResultSender = Arc<std::sync::Mutex<Option<oneshot::Sender<Result<Value, String>>>>>;
 type CaptureResultSender = Arc<std::sync::Mutex<Option<oneshot::Sender<Result<String, String>>>>>;
 type PrintResultSender = Arc<std::sync::Mutex<Option<oneshot::Sender<Result<(), String>>>>>;
 
@@ -589,10 +656,8 @@ mod handlers {
         COREWEBVIEW2_SCRIPT_DIALOG_KIND_PROMPT, ICoreWebView2,
         ICoreWebView2CapturePreviewCompletedHandler,
         ICoreWebView2CapturePreviewCompletedHandler_Impl, ICoreWebView2Deferral,
-        ICoreWebView2ExecuteScriptCompletedHandler,
-        ICoreWebView2ExecuteScriptCompletedHandler_Impl, ICoreWebView2PrintToPdfCompletedHandler,
-        ICoreWebView2PrintToPdfCompletedHandler_Impl, ICoreWebView2ScriptDialogOpeningEventArgs,
-        ICoreWebView2ScriptDialogOpeningEventHandler,
+        ICoreWebView2PrintToPdfCompletedHandler, ICoreWebView2PrintToPdfCompletedHandler_Impl,
+        ICoreWebView2ScriptDialogOpeningEventArgs, ICoreWebView2ScriptDialogOpeningEventHandler,
         ICoreWebView2ScriptDialogOpeningEventHandler_Impl,
         ICoreWebView2WebMessageReceivedEventArgs, ICoreWebView2WebMessageReceivedEventHandler,
         ICoreWebView2WebMessageReceivedEventHandler_Impl,
@@ -601,46 +666,10 @@ mod handlers {
 
     use super::{
         AlertState, AlertType, AsyncScriptState, CaptureResultSender, HANDLER_NAME, PendingAlert,
-        PrintResultSender, ScriptResultSender, SendableComPtr,
+        PrintResultSender, SendableComPtr,
     };
     use crate::platform::alert_state::AlertResponse;
     use std::sync::Arc;
-
-    #[implement(ICoreWebView2ExecuteScriptCompletedHandler)]
-    pub struct ExecuteScriptHandler {
-        pub tx: ScriptResultSender,
-    }
-
-    impl ExecuteScriptHandler {
-        pub fn new(tx: ScriptResultSender) -> Self {
-            Self { tx }
-        }
-    }
-
-    impl ICoreWebView2ExecuteScriptCompletedHandler_Impl for ExecuteScriptHandler_Impl {
-        fn Invoke(
-            &self,
-            errorcode: windows::core::HRESULT,
-            resultobjectasjson: &windows::core::PCWSTR,
-        ) -> windows::core::Result<()> {
-            let response = if errorcode.is_err() {
-                Err(format!("Script execution failed: {errorcode:?}"))
-            } else {
-                let json_str = unsafe { resultobjectasjson.to_string().unwrap_or_default() };
-                match serde_json::from_str(&json_str) {
-                    Ok(value) => Ok(value),
-                    Err(_) => Ok(Value::String(json_str)),
-                }
-            };
-
-            if let Ok(mut guard) = self.tx.lock()
-                && let Some(tx) = guard.take()
-            {
-                let _ = tx.send(response);
-            }
-            Ok(())
-        }
-    }
 
     #[implement(ICoreWebView2CapturePreviewCompletedHandler)]
     pub struct CapturePreviewHandler {
@@ -962,10 +991,7 @@ mod handlers {
     }
 }
 
-use handlers::{
-    CapturePreviewHandler, ExecuteScriptHandler, ScriptDialogOpeningHandler,
-    WebMessageReceivedHandler,
-};
+use handlers::{CapturePreviewHandler, ScriptDialogOpeningHandler, WebMessageReceivedHandler};
 
 /// Register the `WebMessage` handler for a webview.
 ///
