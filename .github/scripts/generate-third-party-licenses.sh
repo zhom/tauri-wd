@@ -13,6 +13,8 @@ case "$target" in
     ;;
 esac
 
+cargo fetch --locked --manifest-path "$root/Cargo.toml"
+
 LC_ALL=C cargo about generate \
   --config "$root/.github/licenses/about.toml" \
   --manifest-path "$root/crates/tauri-wd/Cargo.toml" \

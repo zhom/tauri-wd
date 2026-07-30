@@ -376,23 +376,29 @@ BODY_ID="$(curl -fsS -H 'content-type: application/json' \
   -d '{"using":"css selector","value":"body"}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/element" | \
   sed -n 's/.*"element-6066-11e4-a52e-4f735466cecf":"\([^"]*\)".*/\1/p')"
+curl -fsS -H 'content-type: application/json' \
+  -d '{"script":"window.lastDocumentKeyTarget=null;document.addEventListener(\"keydown\",function(event){window.lastDocumentKeyTarget=event.target.tagName;},{once:true,capture:true});return null;","args":[]}' \
+  "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/sync" >/dev/null
 curl -fsS -X POST -H 'content-type: application/json' -d '{"text":"q"}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/element/$BODY_ID/value" >/dev/null
-BODY_ACTIVE="$(curl -fsS -H 'content-type: application/json' \
-  -d '{"script":"return document.activeElement===document.body;","args":[]}' \
+BODY_KEY_TARGET="$(curl -fsS -H 'content-type: application/json' \
+  -d '{"script":"return window.lastDocumentKeyTarget;","args":[]}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/sync")"
-[[ "$BODY_ACTIVE" == *'"value":true'* ]]
+[[ "$BODY_KEY_TARGET" == *'"value":"BODY"'* ]]
 
 HTML_ID="$(curl -fsS -H 'content-type: application/json' \
   -d '{"using":"css selector","value":"html"}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/element" | \
   sed -n 's/.*"element-6066-11e4-a52e-4f735466cecf":"\([^"]*\)".*/\1/p')"
+curl -fsS -H 'content-type: application/json' \
+  -d '{"script":"window.lastDocumentKeyTarget=null;document.addEventListener(\"keydown\",function(event){window.lastDocumentKeyTarget=event.target.tagName;},{once:true,capture:true});return null;","args":[]}' \
+  "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/sync" >/dev/null
 curl -fsS -X POST -H 'content-type: application/json' -d '{"text":"q"}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/element/$HTML_ID/value" >/dev/null
-HTML_ACTIVE="$(curl -fsS -H 'content-type: application/json' \
-  -d '{"script":"return document.activeElement===document.documentElement;","args":[]}' \
+HTML_KEY_TARGET="$(curl -fsS -H 'content-type: application/json' \
+  -d '{"script":"return window.lastDocumentKeyTarget;","args":[]}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/sync")"
-[[ "$HTML_ACTIVE" == *'"value":true'* ]]
+[[ "$HTML_KEY_TARGET" == *'"value":"HTML"'* ]]
 
 OPACITY_KEYS_ID="$(curl -fsS -H 'content-type: application/json' \
   -d '{"using":"css selector","value":"#opacity-keys"}' \

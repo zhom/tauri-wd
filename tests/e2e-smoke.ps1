@@ -325,18 +325,20 @@ try {
     }
 
     $BodyId = Find-Css "body"
+    Execute-Script 'window.lastDocumentKeyTarget=null;document.addEventListener("keydown",function(event){window.lastDocumentKeyTarget=event.target.tagName;},{once:true,capture:true});return null;' | Out-Null
     Invoke-RestMethod -Method Post `
         -Uri "$BaseUrl/session/$SessionId/element/$BodyId/value" `
         -ContentType "application/json" -Body '{"text":"q"}' | Out-Null
-    $BodyActive = Execute-Script "return document.activeElement===document.body;"
-    if ($BodyActive.value -ne $true) { throw "Body did not remain the active element" }
+    $BodyKeyTarget = Execute-Script "return window.lastDocumentKeyTarget;"
+    if ($BodyKeyTarget.value -ne "BODY") { throw "Body did not receive keys" }
 
     $HtmlId = Find-Css "html"
+    Execute-Script 'window.lastDocumentKeyTarget=null;document.addEventListener("keydown",function(event){window.lastDocumentKeyTarget=event.target.tagName;},{once:true,capture:true});return null;' | Out-Null
     Invoke-RestMethod -Method Post `
         -Uri "$BaseUrl/session/$SessionId/element/$HtmlId/value" `
         -ContentType "application/json" -Body '{"text":"q"}' | Out-Null
-    $HtmlActive = Execute-Script "return document.activeElement===document.documentElement;"
-    if ($HtmlActive.value -ne $true) { throw "Root element did not become active" }
+    $HtmlKeyTarget = Execute-Script "return window.lastDocumentKeyTarget;"
+    if ($HtmlKeyTarget.value -ne "HTML") { throw "Root element did not receive keys" }
 
     $OpacityKeysId = Find-Css "#opacity-keys"
     Invoke-RestMethod -Method Post `

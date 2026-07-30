@@ -85,6 +85,20 @@ jobs:
         with:
           tool: cargo-audit@0.22.2
       - run: cargo audit
+      - uses: taiki-e/install-action@065d6a08a14e61e89fb0a4c10eecdbdef39c7d8e # v2.85.4
+        with:
+          tool: cargo-about@0.8.4
+      - name: Verify release license manifests
+        shell: bash
+        run: |
+          for target in \
+            aarch64-apple-darwin \
+            x86_64-apple-darwin \
+            x86_64-unknown-linux-gnu \
+            x86_64-pc-windows-msvc; do
+            bash .github/scripts/generate-third-party-licenses.sh \
+              "$target" "$RUNNER_TEMP/THIRD_PARTY_LICENSES-$target.md"
+          done
 
   site:
     runs-on: ubuntu-24.04
