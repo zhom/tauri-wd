@@ -1,5 +1,5 @@
 use clap::Parser;
-use tauri_cross_platform_webdriver::{
+use tauri_wd::{
     config::{Cli, DriverConfig, LogFormat},
     serve,
 };

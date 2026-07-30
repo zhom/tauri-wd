@@ -32,7 +32,7 @@ pub async fn status<R: Runtime>(state: State<Arc<AppState<R>>>) -> WebDriverResu
     Ok(WebDriverResponse::success(json!({
         "ready": ready,
         "message": if ready {
-            "Tauri WebDriver is ready"
+            "tauri-wd is ready"
         } else {
             "waiting for webview initialization"
         }

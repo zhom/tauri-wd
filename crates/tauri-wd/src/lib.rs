@@ -1,4 +1,5 @@
-//! Native, test-only WebDriver integration for Tauri applications.
+//! `tauri-wd` provides a W3C WebDriver CLI and native, test-only automation
+//! integration for Tauri applications.
 //!
 //! The HTTP server is inert unless the app was launched with
 //! `TAURI_AUTOMATION=true`. `tauri-wd` supplies the private port, bearer token,
@@ -17,6 +18,12 @@ use tauri::{
 mod platform;
 mod server;
 mod webdriver;
+
+pub mod capabilities;
+pub mod config;
+pub mod driver;
+pub mod error;
+pub mod launcher;
 
 pub const AUTOMATION_ENV_VAR: &str = "TAURI_AUTOMATION";
 pub const PORT_ENV_VAR: &str = "TAURI_WEBDRIVER_PORT";
@@ -67,7 +74,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 /// Port `0` asks the operating system for an unused port and is recommended.
 #[must_use]
 pub fn init_with_port<R: Runtime>(port: u16) -> TauriPlugin<R> {
-    Builder::new("cross-platform-webdriver")
+    Builder::new("tauri-wd")
         .setup(move |app, _api| {
             if !automation_enabled() {
                 tracing::debug!("WebDriver plugin is inert outside automation builds");
@@ -89,7 +96,7 @@ pub fn init_with_port<R: Runtime>(port: u16) -> TauriPlugin<R> {
                 token,
                 std::path::PathBuf::from(ready_file),
             );
-            tracing::info!("cross-platform WebDriver plugin initialized");
+            tracing::info!("tauri-wd plugin initialized");
             Ok(())
         })
         .on_webview_ready(|webview| {
@@ -110,4 +117,66 @@ fn required_env(name: &str) -> std::result::Result<String, io::Error> {
                 format!("{name} is required when automation is enabled"),
             )
         })
+}
+
+/// Runs the `tauri-wd` W3C WebDriver listener.
+pub async fn serve(mut config: config::DriverConfig) -> Result<(), error::WebDriverError> {
+    use std::{net::SocketAddr, sync::Arc};
+
+    if !config.host.is_loopback() {
+        return Err(error::WebDriverError::invalid_argument(
+            "The WebDriver listener must use a loopback address",
+        ));
+    }
+    let address = SocketAddr::new(config.host, config.port);
+    let listener = tokio::net::TcpListener::bind(address)
+        .await
+        .map_err(|source| {
+            error::WebDriverError::unknown(format!("Failed to bind {address}: {source}"))
+        })?;
+    let local_address = listener.local_addr().map_err(|source| {
+        error::WebDriverError::unknown(format!("Failed to inspect listener: {source}"))
+    })?;
+    config.host = local_address.ip();
+    config.port = local_address.port();
+    let driver = Arc::new(driver::Driver::new(config)?);
+
+    tracing::info!("tauri-wd listening on http://{local_address}");
+    let shutdown_driver = driver.clone();
+    let server = axum::serve(listener, driver.router()).with_graceful_shutdown(async move {
+        shutdown_signal().await;
+        shutdown_driver.shutdown().await;
+    });
+    server.await.map_err(|source| {
+        error::WebDriverError::unknown(format!("WebDriver server failed: {source}"))
+    })
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        let mut terminate = match signal(SignalKind::terminate()) {
+            Ok(signal) => signal,
+            Err(error) => {
+                tracing::warn!("failed to register SIGTERM handler: {error}");
+                return wait_for_ctrl_c().await;
+            }
+        };
+        tokio::select! {
+            () = wait_for_ctrl_c() => {}
+            _ = terminate.recv() => {}
+        }
+    }
+
+    #[cfg(not(unix))]
+    wait_for_ctrl_c().await;
+}
+
+async fn wait_for_ctrl_c() {
+    if let Err(error) = tokio::signal::ctrl_c().await {
+        tracing::warn!("failed to register shutdown signal: {error}");
+        std::future::pending::<()>().await;
+    }
 }

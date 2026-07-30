@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="https://zhom.github.io/tauri-wd/favicon.svg" alt="Tauri WebDriver" width="72">
-  <h1>Tauri WebDriver</h1>
+  <img src="https://zhom.github.io/tauri-wd/favicon.svg" alt="tauri-wd" width="72">
+  <h1>tauri-wd</h1>
   <strong>Reliable end-to-end testing for Tauri on every desktop platform.</strong>
   <br>
   <a href="https://zhom.github.io/tauri-wd/">Website</a>
@@ -13,7 +13,7 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
-<img alt="Tauri WebDriver supports macOS, Windows, and Linux" src="https://zhom.github.io/tauri-wd/social-card.png">
+<img alt="tauri-wd supports macOS, Windows, and Linux" src="https://zhom.github.io/tauri-wd/social-card.png">
 
 ## Features
 
@@ -45,7 +45,7 @@ let builder = builder.plugin(tauri_wd::init());
 Install the driver and point your W3C client at `127.0.0.1:4444`:
 
 ```sh
-cargo install tauri-cross-platform-webdriver --locked
+cargo install tauri-wd --locked
 tauri-wd
 ```
 

@@ -1,3 +1,5 @@
+//! Native Tauri application launching and process cleanup.
+
 use std::{io, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;

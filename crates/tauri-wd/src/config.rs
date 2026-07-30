@@ -39,7 +39,7 @@ pub struct Cli {
     #[arg(long, default_value_t = 64, value_parser = parse_body_limit)]
     pub max_body_mib: usize,
 
-    /// Log filter, such as info or tauri_cross_platform_webdriver=debug.
+    /// Log filter, such as info or tauri_wd=debug.
     #[arg(long, default_value = "info")]
     pub log: String,
 

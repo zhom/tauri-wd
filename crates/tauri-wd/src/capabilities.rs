@@ -1,3 +1,5 @@
+//! W3C capability parsing for launching Tauri applications.
+
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},

@@ -11,7 +11,7 @@ DRIVER="$TARGET_DIR/debug/tauri-wd"
 APP="$TARGET_DIR/debug/webdriver-fixture"
 
 cargo build --locked --manifest-path "$ROOT/Cargo.toml" \
-  --package tauri-cross-platform-webdriver
+  --package tauri-wd
 CARGO_TARGET_DIR="$TARGET_DIR" cargo build --locked \
   --manifest-path "$ROOT/tests/fixture/src-tauri/Cargo.toml"
 

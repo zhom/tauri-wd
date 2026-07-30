@@ -1,9 +1,6 @@
 [workspace]
 resolver = "3"
-members = [
-    "crates/tauri-cross-platform-webdriver",
-    "crates/tauri-wd",
-]
+members = ["crates/tauri-wd"]
 exclude = ["tests/fixture/src-tauri"]
 
 [workspace.package]

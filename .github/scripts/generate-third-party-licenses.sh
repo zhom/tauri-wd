@@ -15,7 +15,7 @@ esac
 
 LC_ALL=C cargo about generate \
   --config "$root/.github/licenses/about.toml" \
-  --manifest-path "$root/crates/tauri-cross-platform-webdriver/Cargo.toml" \
+  --manifest-path "$root/crates/tauri-wd/Cargo.toml" \
   --target "$target" \
   --frozen \
   --fail \

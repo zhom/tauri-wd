@@ -1,3 +1,5 @@
+//! W3C WebDriver error responses.
+
 use axum::{
     Json,
     http::{StatusCode, header},

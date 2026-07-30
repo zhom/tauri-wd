@@ -43,7 +43,7 @@ function Execute-Script {
 
 try {
     cargo build --locked --manifest-path (Join-Path $Root "Cargo.toml") `
-        --package tauri-cross-platform-webdriver
+        --package tauri-wd
     if ($LASTEXITCODE -ne 0) { throw "Driver build failed" }
 
     $env:CARGO_TARGET_DIR = $TargetDir
