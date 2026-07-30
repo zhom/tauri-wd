@@ -8,6 +8,17 @@ updates:
     groups:
       rust:
         patterns: ["*"]
+    ignore:
+      # These native bindings must stay aligned with Tauri/Wry's WebView2 and
+      # GTK3 dependency stacks. Remove the relevant rule when upstream moves.
+      - dependency-name: webview2-com
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: windows
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: windows-core
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: cairo-rs
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /
