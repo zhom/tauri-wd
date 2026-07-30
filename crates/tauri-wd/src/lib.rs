@@ -5,7 +5,7 @@
 //! and readiness channel automatically.
 
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-compile_error!("tauri-plugin-cross-platform-webdriver supports macOS, Windows, and Linux");
+compile_error!("tauri-wd supports macOS, Windows, and Linux");
 
 use std::io;
 

@@ -1,5 +1,5 @@
 [package]
-name = "tauri-plugin-cross-platform-webdriver"
+name = "tauri-wd"
 description = "Native cross-platform WebDriver plugin for Tauri applications"
 version.workspace = true
 edition.workspace = true
@@ -8,11 +8,11 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-documentation = "https://docs.rs/tauri-plugin-cross-platform-webdriver"
+documentation = "https://docs.rs/tauri-wd"
 readme = "../../README.md"
 keywords = ["tauri", "webdriver", "testing", "automation", "e2e"]
 categories = ["development-tools::testing", "gui"]
-links = "tauri-plugin-cross-platform-webdriver"
+links = "tauri-wd"
 
 [dependencies]
 async-trait.workspace = true

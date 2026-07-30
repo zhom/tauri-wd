@@ -20,7 +20,7 @@
     />
     <meta name="author" content="Internet Technology Services LLC" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://zhom.github.io/tauri-wg/" />
+    <link rel="canonical" href="https://zhom.github.io/tauri-wd/" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="sitemap" type="application/xml" href="./sitemap.xml" />
@@ -32,10 +32,10 @@
       property="og:description"
       content="Reliable native end-to-end testing for Tauri apps on macOS, Windows, and Linux."
     />
-    <meta property="og:url" content="https://zhom.github.io/tauri-wg/" />
+    <meta property="og:url" content="https://zhom.github.io/tauri-wd/" />
     <meta
       property="og:image"
-      content="https://zhom.github.io/tauri-wg/social-card.png"
+      content="https://zhom.github.io/tauri-wd/social-card.png"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -51,7 +51,7 @@
     />
     <meta
       name="twitter:image"
-      content="https://zhom.github.io/tauri-wg/social-card.png"
+      content="https://zhom.github.io/tauri-wd/social-card.png"
     />
 
     <script type="application/ld+json">
@@ -64,8 +64,8 @@
         "description": "A cross-platform W3C WebDriver server and native Tauri plugin for end-to-end testing.",
         "license": "https://opensource.org/license/mit",
         "isAccessibleForFree": true,
-        "codeRepository": "https://github.com/zhom/tauri-wg",
-        "url": "https://zhom.github.io/tauri-wg/"
+        "codeRepository": "https://github.com/zhom/tauri-wd",
+        "url": "https://zhom.github.io/tauri-wd/"
       }
     </script>
     <script src="./site.js" defer></script>
@@ -88,7 +88,7 @@
           <a href="#security">Security</a>
         </nav>
 
-        <a class="header-link" href="https://github.com/zhom/tauri-wg"
+        <a class="header-link" href="https://github.com/zhom/tauri-wd"
           >GitHub</a
         >
 
@@ -100,7 +100,7 @@
             <a href="#setup">Setup</a>
             <a href="#protocol">Protocol</a>
             <a href="#security">Security</a>
-            <a href="https://github.com/zhom/tauri-wg">GitHub</a>
+            <a href="https://github.com/zhom/tauri-wd">GitHub</a>
           </nav>
         </details>
       </div>
@@ -121,9 +121,7 @@
           </p>
           <div class="intro-actions">
             <a class="primary-action" href="#setup">Install and configure</a>
-            <a
-              class="text-action"
-              href="https://crates.io/crates/tauri-cross-platform-webdriver"
+            <a class="text-action" href="https://crates.io/crates/tauri-wd"
               >View on crates.io <span aria-hidden="true">↗</span></a
             >
           </div>
@@ -272,19 +270,19 @@
                   class="copy-button"
                   type="button"
                   data-copy='[features]
-e2e = ["dep:tauri-plugin-cross-platform-webdriver"]
+e2e = ["dep:tauri-wd"]
 
 [dependencies]
-tauri-plugin-cross-platform-webdriver = { version = "0.1", optional = true }'
+tauri-wd = { version = "0.1", optional = true }'
                 >
                   Copy
                 </button>
               </div>
               <pre><code><span class="muted">[features]</span>
-e2e = ["dep:tauri-plugin-cross-platform-webdriver"]
+e2e = ["dep:tauri-wd"]
 
 <span class="muted">[dependencies]</span>
-tauri-plugin-cross-platform-webdriver = {
+tauri-wd = {
   version = "0.1", optional = true
 }</code></pre>
             </div>
@@ -311,7 +309,7 @@ tauri-plugin-cross-platform-webdriver = {
 
 #[cfg(feature = "e2e")]
 let builder = builder.plugin(
-    tauri_plugin_cross_platform_webdriver::init(),
+    tauri_wd::init(),
 );'
                 >
                   Copy
@@ -321,7 +319,7 @@ let builder = builder.plugin(
 
 <span class="muted">#[cfg(feature = "e2e")]</span>
 let builder = builder.plugin(
-  tauri_plugin_cross_platform_webdriver::init(),
+  tauri_wd::init(),
 );</code></pre>
             </div>
           </li>
@@ -581,7 +579,7 @@ let builder = builder.plugin(
           <p class="eyebrow">Ready to test the whole app?</p>
           <h2>Use the tools your team already knows.</h2>
         </div>
-        <a class="text-action" href="https://github.com/zhom/tauri-wg"
+        <a class="text-action" href="https://github.com/zhom/tauri-wd"
           >Read the source <span aria-hidden="true">↗</span></a
         >
       </section>
@@ -597,12 +595,10 @@ let builder = builder.plugin(
           <p>Native end-to-end testing for current Tauri applications.</p>
         </div>
         <nav aria-label="Footer navigation">
-          <a href="https://crates.io/crates/tauri-cross-platform-webdriver"
-            >crates.io</a
-          >
-          <a href="https://docs.rs/tauri-cross-platform-webdriver">docs.rs</a>
-          <a href="https://github.com/zhom/tauri-wg">GitHub</a>
-          <a href="https://github.com/zhom/tauri-wg/blob/main/SECURITY.md"
+          <a href="https://crates.io/crates/tauri-wd">crates.io</a>
+          <a href="https://docs.rs/tauri-wd">docs.rs</a>
+          <a href="https://github.com/zhom/tauri-wd">GitHub</a>
+          <a href="https://github.com/zhom/tauri-wd/blob/main/SECURITY.md"
             >Security</a
           >
         </nav>

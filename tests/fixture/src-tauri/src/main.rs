@@ -2,7 +2,7 @@
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_cross_platform_webdriver::init())
+        .plugin(tauri_wd::init())
         .run(tauri::generate_context!())
         .expect("failed to run WebDriver fixture");
 }

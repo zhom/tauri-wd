@@ -192,10 +192,10 @@ impl<R: Runtime + 'static> PlatformExecutor<R> for LinuxExecutor<R> {
                     Err(e) => Err(e.to_string()),
                 };
 
-                if let Ok(mut guard) = tx.lock() {
-                    if let Some(tx) = guard.take() {
-                        let _ = tx.send(response);
-                    }
+                if let Ok(mut guard) = tx.lock()
+                    && let Some(tx) = guard.take()
+                {
+                    let _ = tx.send(response);
                 }
             });
         });
@@ -245,10 +245,10 @@ impl<R: Runtime + 'static> PlatformExecutor<R> for LinuxExecutor<R> {
                     Err(e) => Err(e.to_string()),
                 };
 
-                if let Ok(mut guard) = tx.lock() {
-                    if let Some(tx) = guard.take() {
-                        let _ = tx.send(response);
-                    }
+                if let Ok(mut guard) = tx.lock()
+                    && let Some(tx) = guard.take()
+                {
+                    let _ = tx.send(response);
                 }
             });
         });
@@ -335,10 +335,10 @@ impl<R: Runtime + 'static> PlatformExecutor<R> for LinuxExecutor<R> {
 
             let tx = Arc::new(std::sync::Mutex::new(Some(tx)));
             print_op.connect_finished(move |_op| {
-                if let Ok(mut guard) = tx.lock() {
-                    if let Some(tx) = guard.take() {
-                        let _ = tx.send(Ok(()));
-                    }
+                if let Ok(mut guard) = tx.lock()
+                    && let Some(tx) = guard.take()
+                {
+                    let _ = tx.send(Ok(()));
                 }
             });
 
@@ -465,10 +465,10 @@ impl<R: Runtime + 'static> PlatformExecutor<R> for LinuxExecutor<R> {
                     Err(e) => Err(e.to_string()),
                 };
 
-                if let Ok(mut guard) = tx.lock() {
-                    if let Some(tx) = guard.take() {
-                        let _ = tx.send(response);
-                    }
+                if let Ok(mut guard) = tx.lock()
+                    && let Some(tx) = guard.take()
+                {
+                    let _ = tx.send(response);
                 }
             });
         });

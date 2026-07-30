@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://zhom.github.io/tauri-wg/sitemap.xml
+Sitemap: https://zhom.github.io/tauri-wd/sitemap.xml

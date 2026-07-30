@@ -23,5 +23,5 @@ LC_ALL=C cargo about generate \
   "$root/.github/licenses/third-party.hbs"
 
 printf '\n---\n\n' >>"$output"
-cat "$root/crates/tauri-plugin-cross-platform-webdriver/THIRD_PARTY_LICENSES.md" >>"$output"
+cat "$root/crates/tauri-wd/THIRD_PARTY_LICENSES.md" >>"$output"
 test -s "$output"

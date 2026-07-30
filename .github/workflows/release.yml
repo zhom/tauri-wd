@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
@@ -27,10 +27,10 @@ jobs:
           toolchain: stable
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-      - uses: taiki-e/install-action@899b013517f9e7774591216672bf75a46bb9a481 # v2.9.4
+      - uses: taiki-e/install-action@065d6a08a14e61e89fb0a4c10eecdbdef39c7d8e # v2.85.4
         with:
           tool: cargo-audit@0.22.2
       - name: Install Linux dependencies
@@ -55,7 +55,7 @@ jobs:
       - run: cargo +1.90.0 check --workspace --all-targets --all-features --locked
       - name: Preflight packages
         run: |
-          cargo +stable publish -p tauri-plugin-cross-platform-webdriver --locked --dry-run
+          cargo +stable publish -p tauri-wd --locked --dry-run
           cargo +stable publish -p tauri-cross-platform-webdriver --locked --dry-run
 
   binaries:
@@ -87,11 +87,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
           toolchain: stable
-      - uses: taiki-e/install-action@3d7d7cd5ac7f994c1892ae0c06165095b9139094 # v2.85.1
+      - uses: taiki-e/install-action@065d6a08a14e61e89fb0a4c10eecdbdef39c7d8e # v2.85.4
         with:
           tool: cargo-about@0.8.4
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
@@ -168,7 +168,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
           toolchain: stable
@@ -195,14 +195,14 @@ jobs:
           export CARGO_REGISTRY_TOKEN="${CRATES_IO_TOKEN:-$OIDC_TOKEN}"
           test -n "$CARGO_REGISTRY_TOKEN"
           version="${GITHUB_REF_NAME#v}"
-          cargo package -p tauri-plugin-cross-platform-webdriver --locked --no-verify
+          cargo package -p tauri-wd --locked --no-verify
           cargo package -p tauri-cross-platform-webdriver --locked --no-verify
 
           publication_state() {
             local crate="$1"
             local http_code
             if ! http_code="$(curl --silent --show-error \
-              --user-agent "tauri-wg-release/$GITHUB_SHA" \
+              --user-agent "tauri-wd-release/$GITHUB_SHA" \
               --output /dev/null \
               --write-out '%{http_code}' \
               "https://crates.io/api/v1/crates/$crate/$version")"; then
@@ -225,7 +225,7 @@ jobs:
             local published_checksum
             local_checksum="$(sha256sum "target/package/$crate-$version.crate" | cut -d ' ' -f 1)"
             published_checksum="$(curl --fail --silent --show-error \
-              --user-agent "tauri-wg-release/$GITHUB_SHA" \
+              --user-agent "tauri-wd-release/$GITHUB_SHA" \
               "https://crates.io/api/v1/crates/$crate/$version" \
               | jq --exit-status --raw-output '.version.checksum')"
             if [ "$local_checksum" != "$published_checksum" ]; then
@@ -260,9 +260,9 @@ jobs:
             return 1
           }
 
-          publish_if_missing tauri-plugin-cross-platform-webdriver
+          publish_if_missing tauri-wd
           publish_if_missing tauri-cross-platform-webdriver
-          test "$(publication_state tauri-plugin-cross-platform-webdriver)" = published
+          test "$(publication_state tauri-wd)" = published
           test "$(publication_state tauri-cross-platform-webdriver)" = published
 
   github-release:
@@ -274,7 +274,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -376,7 +376,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 0

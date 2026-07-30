@@ -2,7 +2,7 @@
 resolver = "3"
 members = [
     "crates/tauri-cross-platform-webdriver",
-    "crates/tauri-plugin-cross-platform-webdriver",
+    "crates/tauri-wd",
 ]
 exclude = ["tests/fixture/src-tauri"]
 
@@ -11,14 +11,14 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
-repository = "https://github.com/zhom/tauri-wg"
-homepage = "https://zhom.github.io/tauri-wg/"
+repository = "https://github.com/zhom/tauri-wd"
+homepage = "https://zhom.github.io/tauri-wd/"
 authors = ["Internet Technology Services LLC"]
 
 [workspace.dependencies]
 async-trait = "0.1.89"
 axum = "0.8.9"
-base64 = "0.22.1"
+base64 = "0.23.0"
 clap = { version = "4.6.2", features = ["derive"] }
 futures-util = "0.3.33"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
