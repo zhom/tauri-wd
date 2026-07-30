@@ -24,7 +24,10 @@
       <output id="click-result"></output>
       <span id="obscured-wrap" style="position: relative; display: inline-block;">
         <button id="obscured" type="button">Obscured</button>
-        <span style="position: absolute; inset: 0; z-index: 2;"></span>
+        <span
+          id="obscurer"
+          style="position: absolute; inset: 0; z-index: 2; display: block; pointer-events: auto; background: rgba(0, 0, 0, 0.01);"
+        ></span>
       </span>
       <button id="hidden-button" type="button" style="display: none;">Hidden</button>
       <button id="no-pointer-button" type="button" style="pointer-events: none;">No pointer</button>

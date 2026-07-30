@@ -42,16 +42,17 @@ function Execute-Script {
 }
 
 try {
-    cargo build --manifest-path (Join-Path $Root "Cargo.toml") `
+    cargo build --locked --manifest-path (Join-Path $Root "Cargo.toml") `
         --package tauri-cross-platform-webdriver
     if ($LASTEXITCODE -ne 0) { throw "Driver build failed" }
 
     $env:CARGO_TARGET_DIR = $TargetDir
-    cargo build --manifest-path (Join-Path $Root "tests/fixture/src-tauri/Cargo.toml")
+    cargo build --locked `
+        --manifest-path (Join-Path $Root "tests/fixture/src-tauri/Cargo.toml")
     if ($LASTEXITCODE -ne 0) { throw "Fixture build failed" }
 
     $DriverProcess = Start-Process -FilePath $Driver `
-        -ArgumentList "--port", $Port, "--startup-timeout", $StartupTimeout, "--log", "warn" `
+        -ArgumentList "--port", $Port, "--startup-timeout", $StartupTimeout, "--log", "info" `
         -PassThru -NoNewWindow
 
     $Ready = $false
@@ -246,7 +247,7 @@ try {
             $ErrorBody -notlike "*`"error`":`"$($Case.Error)`"*" -or
             $ErrorBody -notlike "*$($Case.Message)*"
         ) {
-            throw "$($Case.Selector) returned the wrong WebDriver error"
+            throw "$($Case.Selector) returned the wrong WebDriver error: $ErrorBody"
         }
     }
 

@@ -173,7 +173,9 @@ pub async fn delete<R: Runtime>(
         if last_session {
             let app = state.app.clone();
             tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+                // Leave enough time for the DELETE response to flush before
+                // WebKitGTK tears down the embedded HTTP server.
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
                 app.exit(0);
             });
         }

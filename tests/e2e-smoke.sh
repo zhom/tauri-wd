@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
+trap 'status=$?; echo "smoke test failed at line $LINENO: $BASH_COMMAND" >&2; exit "$status"' ERR
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${TAURI_WD_TEST_PORT:-4464}"
@@ -8,11 +10,12 @@ TARGET_DIR="$ROOT/target"
 DRIVER="$TARGET_DIR/debug/tauri-wd"
 APP="$TARGET_DIR/debug/webdriver-fixture"
 
-cargo build --manifest-path "$ROOT/Cargo.toml" --package tauri-cross-platform-webdriver
-CARGO_TARGET_DIR="$TARGET_DIR" cargo build \
+cargo build --locked --manifest-path "$ROOT/Cargo.toml" \
+  --package tauri-cross-platform-webdriver
+CARGO_TARGET_DIR="$TARGET_DIR" cargo build --locked \
   --manifest-path "$ROOT/tests/fixture/src-tauri/Cargo.toml"
 
-"$DRIVER" --port "$PORT" --startup-timeout "$STARTUP_TIMEOUT" --log warn &
+"$DRIVER" --port "$PORT" --startup-timeout "$STARTUP_TIMEOUT" --log info &
 DRIVER_PID=$!
 SESSION_ID=""
 UPLOAD_FILE="$(mktemp)"
@@ -34,12 +37,15 @@ for _ in {1..100}; do
   sleep 0.05
 done
 
-SESSION_RESPONSE="$(curl -fsS \
+SESSION_RESPONSE="$(curl -sS \
   -H 'content-type: application/json' \
   -d "{\"capabilities\":{\"alwaysMatch\":{\"tauri:options\":{\"application\":\"$APP\"}}}}" \
   "http://127.0.0.1:$PORT/session")"
 SESSION_ID="$(printf '%s' "$SESSION_RESPONSE" | sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p')"
-test -n "$SESSION_ID"
+if [[ -z "$SESSION_ID" ]]; then
+  echo "initial session creation failed: $SESSION_RESPONSE" >&2
+  exit 1
+fi
 
 curl -fsS -X POST \
   -H 'content-type: application/json' \
@@ -608,12 +614,15 @@ curl -fsS -X DELETE "http://127.0.0.1:$PORT/session/$SESSION_ID" >/dev/null
 SESSION_ID=""
 
 for _ in {1..4}; do
-  SESSION_RESPONSE="$(curl -fsS \
+  SESSION_RESPONSE="$(curl -sS \
     -H 'content-type: application/json' \
     -d "{\"capabilities\":{\"alwaysMatch\":{\"tauri:options\":{\"application\":\"$APP\"}}}}" \
     "http://127.0.0.1:$PORT/session")"
   SESSION_ID="$(printf '%s' "$SESSION_RESPONSE" | sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p')"
-  test -n "$SESSION_ID"
+  if [[ -z "$SESSION_ID" ]]; then
+    echo "repeat session creation failed: $SESSION_RESPONSE" >&2
+    exit 1
+  fi
   TITLE="$(curl -fsS "http://127.0.0.1:$PORT/session/$SESSION_ID/title")"
   [[ "$TITLE" == *'"value":"WebDriver Fixture"'* ]]
   curl -fsS -X DELETE "http://127.0.0.1:$PORT/session/$SESSION_ID" >/dev/null
