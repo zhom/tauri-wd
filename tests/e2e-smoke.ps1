@@ -234,6 +234,11 @@ try {
     $CaptureClicks = Execute-Script "return window.captureClicks;"
     if ($CaptureClicks.value -ne 1) { throw "Pointer capture click failed" }
 
+    $ObscurerHit = Execute-Script 'var target=document.querySelector("#obscured");target.scrollIntoView({block:"center",inline:"center"});var overlay=document.querySelector("#obscurer");document.body.appendChild(overlay);Object.assign(overlay.style,{position:"fixed",inset:"0",zIndex:"2147483647",display:"block",pointerEvents:"auto",background:"#000"});var rect=target.getBoundingClientRect();var hit=document.elementFromPoint(Math.floor((rect.left+rect.right)/2),Math.floor((rect.top+rect.bottom)/2));return hit?hit.id:null;'
+    if ($ObscurerHit.value -ne "obscurer") {
+        throw "Obscured click test was not arranged correctly: $($ObscurerHit | ConvertTo-Json -Compress)"
+    }
+
     foreach ($Case in @(
         @{ Selector = "#obscured"; Error = "element click intercepted"; Message = "center point is obscured" },
         @{ Selector = "#hidden-button"; Error = "element not interactable"; Message = "element has no in-view center point" },
@@ -248,6 +253,9 @@ try {
             $ErrorBody -notlike "*$($Case.Message)*"
         ) {
             throw "$($Case.Selector) returned the wrong WebDriver error: $ErrorBody"
+        }
+        if ($Case.Selector -eq "#obscured") {
+            Execute-Script 'document.querySelector("#obscurer").style.display="none";return null;' | Out-Null
         }
     }
 

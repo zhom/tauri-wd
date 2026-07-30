@@ -230,6 +230,15 @@ CAPTURE_CLICKS="$(curl -fsS -H 'content-type: application/json' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/sync")"
 [[ "$CAPTURE_CLICKS" == *'"value":1'* ]]
 
+OBSCURER_HIT="$(curl -fsS \
+  -H 'content-type: application/json' \
+  -d '{"script":"var target=document.querySelector(\"#obscured\");target.scrollIntoView({block:\"center\",inline:\"center\"});var overlay=document.querySelector(\"#obscurer\");document.body.appendChild(overlay);Object.assign(overlay.style,{position:\"fixed\",inset:\"0\",zIndex:\"2147483647\",display:\"block\",pointerEvents:\"auto\",background:\"#000\"});var rect=target.getBoundingClientRect();var hit=document.elementFromPoint(Math.floor((rect.left+rect.right)/2),Math.floor((rect.top+rect.bottom)/2));return hit?hit.id:null;","args":[]}' \
+  "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/sync")"
+if [[ "$OBSCURER_HIT" != *'"value":"obscurer"'* ]]; then
+  echo "obscured click test was not arranged correctly: $OBSCURER_HIT" >&2
+  exit 1
+fi
+
 for CASE in \
   'obscured|element click intercepted|center point is obscured' \
   'hidden-button|element not interactable|element has no in-view center point' \
@@ -248,6 +257,12 @@ for CASE in \
     [[ "$ERROR_RESPONSE" != *"$EXPECTED_MESSAGE"* ]]; then
     echo "$SELECTOR returned the wrong WebDriver error: $ERROR_RESPONSE" >&2
     exit 1
+  fi
+  if [[ "$SELECTOR" == "obscured" ]]; then
+    curl -fsS \
+      -H 'content-type: application/json' \
+      -d '{"script":"document.querySelector(\"#obscurer\").style.display=\"none\";return null;","args":[]}' \
+      "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/sync" >/dev/null
   fi
 done
 

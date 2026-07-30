@@ -22,13 +22,11 @@
       <button id="click-sequence" type="button">Click sequence</button>
       <button id="capture-click" type="button">Pointer capture click</button>
       <output id="click-result"></output>
-      <span id="obscured-wrap" style="position: relative; display: inline-block;">
-        <button id="obscured" type="button">Obscured</button>
-        <span
-          id="obscurer"
-          style="position: absolute; inset: 0; z-index: 2; display: block; pointer-events: auto; background: #000;"
-        ></span>
-      </span>
+      <button id="obscured" type="button">Obscured</button>
+      <div
+        id="obscurer"
+        style="position: fixed; inset: 0; z-index: 2147483647; display: none; pointer-events: auto; background: #000;"
+      ></div>
       <button id="hidden-button" type="button" style="display: none;">Hidden</button>
       <button id="no-pointer-button" type="button" style="pointer-events: none;">No pointer</button>
       <button id="invisible-button" type="button" style="visibility: hidden;">Invisible</button>
