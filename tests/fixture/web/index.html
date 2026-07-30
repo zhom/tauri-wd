@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WebDriver Fixture</title>
+  </head>
+  <body>
+    <main id="app">
+      <h1>Tauri WebDriver</h1>
+      <p id="count">0</p>
+      <button id="increment" type="button">Increment</button>
+      <input id="name" aria-label="Name">
+      <input id="keys" aria-label="Keys">
+      <input id="keys-next" aria-label="Next keys">
+      <input id="delayed-keys" aria-label="Delayed keys" style="display: none;">
+      <input id="opacity-keys" aria-label="Opacity keys" style="opacity: 0;">
+      <input id="readonly" value="fixed" readonly>
+      <input id="date" type="date">
+      <input id="checkbox" type="checkbox">
+      <output id="key-result"></output>
+      <button id="click-sequence" type="button">Click sequence</button>
+      <button id="capture-click" type="button">Pointer capture click</button>
+      <output id="click-result"></output>
+      <span id="obscured-wrap" style="position: relative; display: inline-block;">
+        <button id="obscured" type="button">Obscured</button>
+        <span style="position: absolute; inset: 0; z-index: 2;"></span>
+      </span>
+      <button id="hidden-button" type="button" style="display: none;">Hidden</button>
+      <button id="no-pointer-button" type="button" style="pointer-events: none;">No pointer</button>
+      <button id="invisible-button" type="button" style="visibility: hidden;">Invisible</button>
+      <button id="disabled-button" type="button" disabled>Disabled</button>
+      <div id="late-parent"></div>
+      <div id="screenshot-target" style="width: 64px; height: 32px; background: #369;"></div>
+      <input id="upload" type="file" aria-label="Upload">
+      <output id="upload-result"></output>
+      <div id="pointer-pad" style="width: 200px; height: 100px; background: #ddd;"></div>
+      <output id="pointer-result"></output>
+      <fixture-shadow id="shadow"></fixture-shadow>
+      <iframe id="frame" srcdoc="<input id='frame-input'><p id='inside-frame'>Frame ready</p><div id='frame-shot' style='width:40px;height:20px;background:#c00'></div>"></iframe>
+    </main>
+    <script>
+      document.querySelector("#increment").addEventListener("click", () => {
+        const count = document.querySelector("#count");
+        count.textContent = String(Number(count.textContent) + 1);
+      });
+
+      const clickResult = document.querySelector("#click-result");
+      const clickSequence = document.querySelector("#click-sequence");
+      for (const type of [
+        "pointerdown", "mousedown", "focus", "pointerup", "mouseup", "click"
+      ]) {
+        clickSequence.addEventListener(type, () => {
+          clickResult.textContent += `${clickResult.textContent ? "," : ""}${type}`;
+        });
+      }
+      window.captureClicks = 0;
+      document.querySelector("#capture-click").addEventListener("pointerdown", (event) => {
+        if (event.target.hasPointerCapture(event.pointerId)) {
+          event.target.releasePointerCapture(event.pointerId);
+        }
+      });
+      document.querySelector("#capture-click").addEventListener("click", () => {
+        window.captureClicks++;
+      });
+
+      const keys = document.querySelector("#keys");
+      const keyResult = document.querySelector("#key-result");
+      window.actionEvents = [];
+      window.keyDetails = [];
+      for (const type of ["keydown", "keypress", "input", "keyup"]) {
+        keys.addEventListener(type, (event) => {
+          const value = event.key || event.data || "";
+          keyResult.textContent += `${keyResult.textContent ? "," : ""}${type}:${value}`;
+        });
+      }
+      for (const type of ["keydown", "keyup"]) {
+        document.addEventListener(type, (event) => {
+          window.actionEvents.push(`${type}:${event.key}`);
+          window.keyDetails.push(`${type}:${event.key}:${event.code}:${event.location}`);
+        });
+      }
+
+      setTimeout(() => {
+        const late = document.createElement("span");
+        late.id = "late-element";
+        late.className = "late-item";
+        late.textContent = "Late";
+        document.querySelector("#late-parent").appendChild(late);
+      }, 250);
+
+      document.querySelector("#upload").addEventListener("change", async (event) => {
+        const file = event.target.files[0];
+        document.querySelector("#upload-result").textContent = file
+          ? `${file.name}:${file.size}:${await file.text()}`
+          : "empty";
+      });
+
+      const pointerPad = document.querySelector("#pointer-pad");
+      const pointerResult = document.querySelector("#pointer-result");
+      window.pointerClickCount = 0;
+      window.pointerMoveCount = 0;
+      let pointerStart = null;
+      pointerPad.addEventListener("pointerdown", (event) => {
+        pointerStart = [event.clientX, event.clientY];
+        pointerResult.textContent = `down:${event.buttons}`;
+      });
+      window.addEventListener("pointermove", (event) => {
+        window.pointerMoveCount++;
+        if (!pointerStart) return;
+        pointerResult.textContent =
+          `move:${event.clientX - pointerStart[0]},${event.clientY - pointerStart[1]}:${event.buttons}`;
+      });
+      window.addEventListener("pointerup", (event) => {
+        if (!pointerStart) return;
+        pointerResult.textContent += `:up:${event.buttons}`;
+        pointerStart = null;
+      });
+      pointerPad.addEventListener("click", () => {
+        window.pointerClickCount++;
+      });
+
+      customElements.define("fixture-shadow", class extends HTMLElement {
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" }).innerHTML =
+            '<button id="shadow-button" type="button">Shadow ready</button>';
+        }
+      });
+    </script>
+  </body>
+</html>

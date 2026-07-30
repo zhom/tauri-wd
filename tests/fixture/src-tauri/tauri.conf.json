@@ -1,0 +1,25 @@
+{
+  "productName": "WebDriver Fixture",
+  "version": "0.1.0",
+  "identifier": "com.tauri.webdriver.fixture",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "WebDriver Fixture",
+        "width": 720,
+        "height": 480
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/icon.svg"]
+  }
+}

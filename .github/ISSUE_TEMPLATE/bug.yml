@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible driver or platform failure.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Please remove secrets and include a minimal test app when possible.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: tauri-wd 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include capabilities, commands, and the smallest sequence that fails.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Driver and app logs
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The test app only enables the plugin in its e2e build.
+          required: true
+        - label: I tested the latest published version.
+          required: true

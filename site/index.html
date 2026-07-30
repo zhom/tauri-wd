@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="theme-color"
+      content="#f7f7f4"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#111311"
+      media="(prefers-color-scheme: dark)"
+    />
+    <title>Tauri WebDriver — Cross-platform end-to-end testing</title>
+    <meta
+      name="description"
+      content="A production-focused W3C WebDriver for reliable Tauri end-to-end testing on macOS, Windows, and Linux."
+    />
+    <meta name="author" content="Internet Technology Services LLC" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://zhom.github.io/tauri-wg/" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="sitemap" type="application/xml" href="./sitemap.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tauri WebDriver" />
+    <meta property="og:title" content="Cross-platform WebDriver for Tauri" />
+    <meta
+      property="og:description"
+      content="Reliable native end-to-end testing for Tauri apps on macOS, Windows, and Linux."
+    />
+    <meta property="og:url" content="https://zhom.github.io/tauri-wg/" />
+    <meta
+      property="og:image"
+      content="https://zhom.github.io/tauri-wg/social-card.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Tauri WebDriver — reliable end-to-end testing on macOS, Windows, and Linux"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cross-platform WebDriver for Tauri" />
+    <meta
+      name="twitter:description"
+      content="Reliable native end-to-end testing for Tauri apps."
+    />
+    <meta
+      name="twitter:image"
+      content="https://zhom.github.io/tauri-wg/social-card.png"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Tauri WebDriver",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Windows, Linux",
+        "description": "A cross-platform W3C WebDriver server and native Tauri plugin for end-to-end testing.",
+        "license": "https://opensource.org/license/mit",
+        "isAccessibleForFree": true,
+        "codeRepository": "https://github.com/zhom/tauri-wg",
+        "url": "https://zhom.github.io/tauri-wg/"
+      }
+    </script>
+    <script src="./site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="wordmark" href="#top" aria-label="Tauri WebDriver home">
+          <span class="wordmark-mark" aria-hidden="true">TW</span>
+          <span>Tauri WebDriver</span>
+        </a>
+
+        <nav class="desktop-nav" aria-label="Main navigation">
+          <a href="#overview">Overview</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#setup">Setup</a>
+          <a href="#protocol">Protocol</a>
+          <a href="#security">Security</a>
+        </nav>
+
+        <a class="header-link" href="https://github.com/zhom/tauri-wg"
+          >GitHub</a
+        >
+
+        <details class="mobile-nav">
+          <summary>Menu</summary>
+          <nav aria-label="Mobile navigation">
+            <a href="#overview">Overview</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#setup">Setup</a>
+            <a href="#protocol">Protocol</a>
+            <a href="#security">Security</a>
+            <a href="https://github.com/zhom/tauri-wg">GitHub</a>
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="content">
+      <section class="intro section-shell" id="top">
+        <div class="intro-copy">
+          <p class="eyebrow">
+            <span class="status-dot" aria-hidden="true"></span> Native Tauri
+            automation
+          </p>
+          <h1>Cross-platform WebDriver for Tauri.</h1>
+          <p class="lede">
+            Run complex end-to-end tests against the real WKWebView, WebView2,
+            and WebKitGTK surfaces in your desktop app—with standard W3C clients
+            and deterministic app lifecycle management.
+          </p>
+          <div class="intro-actions">
+            <a class="primary-action" href="#setup">Install and configure</a>
+            <a
+              class="text-action"
+              href="https://crates.io/crates/tauri-cross-platform-webdriver"
+              >View on crates.io <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <ul class="platform-list" aria-label="Supported operating systems">
+            <li>macOS</li>
+            <li>Windows</li>
+            <li>Linux</li>
+          </ul>
+        </div>
+
+        <div class="terminal-card" aria-label="Installation command">
+          <div class="terminal-bar">
+            <span>Terminal</span>
+            <button
+              class="copy-button"
+              type="button"
+              data-copy="cargo install tauri-cross-platform-webdriver --locked"
+            >
+              Copy
+            </button>
+          </div>
+          <pre><code><span class="prompt">$</span> cargo install \
+  tauri-cross-platform-webdriver \
+  --locked
+
+<span class="prompt">$</span> tauri-wd
+<span class="success">ready · 127.0.0.1:4444</span></code></pre>
+          <div class="terminal-footer">
+            <span>W3C protocol</span>
+            <span>Loopback only</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-shell" id="overview">
+        <div class="heading-group reveal">
+          <p class="eyebrow">Built for real applications</p>
+          <h2>One test surface, three native webviews.</h2>
+          <p>
+            Keep your test code portable while the embedded engine handles each
+            operating system’s native webview API.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card reveal">
+            <p class="feature-index">01</p>
+            <h3>Native, not simulated</h3>
+            <p>
+              Drive the same window, DOM, dialogs, frames, shadow roots, and
+              input surfaces your users interact with.
+            </p>
+          </article>
+          <article class="feature-card reveal">
+            <p class="feature-index">02</p>
+            <h3>Client independent</h3>
+            <p>
+              Use WebdriverIO, Selenium, Fantoccini, or any current client that
+              speaks the W3C WebDriver protocol.
+            </p>
+          </article>
+          <article class="feature-card reveal">
+            <p class="feature-index">03</p>
+            <h3>Lifecycle owned</h3>
+            <p>
+              Each session launches one app process, isolates its test
+              directory, forwards logs, and cleans up the full process tree.
+            </p>
+          </article>
+        </div>
+
+        <div class="capability-panel reveal">
+          <div>
+            <p class="eyebrow">Command coverage</p>
+            <h3>Enough surface area for complex workflows.</h3>
+          </div>
+          <ul class="check-list">
+            <li>Elements, nested references, and active element</li>
+            <li>Pointer, keyboard, wheel, and release actions</li>
+            <li>Frames, windows, shadow DOM, and alerts</li>
+            <li>Sync and async scripts with W3C JSON cloning</li>
+            <li>Cookies, source, screenshots, and PDF</li>
+            <li>Navigation waits and configurable timeouts</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section-shell" id="architecture">
+        <div class="heading-group reveal">
+          <p class="eyebrow">Architecture</p>
+          <h2>A small boundary around native automation.</h2>
+          <p>
+            The public driver owns sessions and process safety. A test-only
+            plugin translates W3C commands inside the app.
+          </p>
+        </div>
+        <div class="flow" aria-label="WebDriver request architecture">
+          <article class="flow-node reveal">
+            <span class="flow-label">Your runner</span>
+            <h3>WebdriverIO · Selenium · Fantoccini</h3>
+            <p>Sends ordinary W3C commands to a stable loopback endpoint.</p>
+          </article>
+          <div class="flow-connector" aria-hidden="true"><span></span></div>
+          <article class="flow-node flow-node-accent reveal">
+            <span class="flow-label">tauri-wd</span>
+            <h3>Sessions, app processes, policy</h3>
+            <p>
+              Merges capabilities, launches the binary, queues commands, bounds
+              data, and reaps failures.
+            </p>
+          </article>
+          <div class="flow-connector" aria-hidden="true"><span></span></div>
+          <article class="flow-node reveal">
+            <span class="flow-label">Test-only plugin</span>
+            <h3>Native webview bridge</h3>
+            <p>Executes commands through WKWebView, WebView2, or WebKitGTK.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section section-shell" id="setup">
+        <div class="heading-group reveal">
+          <p class="eyebrow">Setup</p>
+          <h2>Keep automation out of production builds.</h2>
+          <p>
+            Gate the plugin behind a Cargo feature, build the test binary, then
+            point your preferred client at the driver.
+          </p>
+        </div>
+
+        <ol class="steps">
+          <li class="step reveal">
+            <div class="step-copy">
+              <span class="step-number">1</span>
+              <div>
+                <h3>Add the optional plugin</h3>
+                <p>
+                  Use a dedicated feature so release binaries never contain an
+                  automation server.
+                </p>
+              </div>
+            </div>
+            <div class="code-block">
+              <div class="code-header">
+                <span>Cargo.toml</span>
+                <button
+                  class="copy-button"
+                  type="button"
+                  data-copy='[features]
+e2e = ["dep:tauri-plugin-cross-platform-webdriver"]
+
+[dependencies]
+tauri-plugin-cross-platform-webdriver = { version = "0.1", optional = true }'
+                >
+                  Copy
+                </button>
+              </div>
+              <pre><code><span class="muted">[features]</span>
+e2e = ["dep:tauri-plugin-cross-platform-webdriver"]
+
+<span class="muted">[dependencies]</span>
+tauri-plugin-cross-platform-webdriver = {
+  version = "0.1", optional = true
+}</code></pre>
+            </div>
+          </li>
+
+          <li class="step reveal">
+            <div class="step-copy">
+              <span class="step-number">2</span>
+              <div>
+                <h3>Register it in test builds</h3>
+                <p>
+                  The plugin remains inert unless <code>tauri-wd</code> launches
+                  the process with a private automation token.
+                </p>
+              </div>
+            </div>
+            <div class="code-block">
+              <div class="code-header">
+                <span>main.rs</span>
+                <button
+                  class="copy-button"
+                  type="button"
+                  data-copy='let builder = tauri::Builder::default();
+
+#[cfg(feature = "e2e")]
+let builder = builder.plugin(
+    tauri_plugin_cross_platform_webdriver::init(),
+);'
+                >
+                  Copy
+                </button>
+              </div>
+              <pre><code>let builder = tauri::Builder::default();
+
+<span class="muted">#[cfg(feature = "e2e")]</span>
+let builder = builder.plugin(
+  tauri_plugin_cross_platform_webdriver::init(),
+);</code></pre>
+            </div>
+          </li>
+
+          <li class="step reveal">
+            <div class="step-copy">
+              <span class="step-number">3</span>
+              <div>
+                <h3>Connect your test client</h3>
+                <p>
+                  Pass the current test binary through the namespaced
+                  <code>tauri:options</code> capability.
+                </p>
+              </div>
+            </div>
+            <div class="code-block">
+              <div class="code-header">
+                <span>wdio.conf.js</span>
+                <button
+                  class="copy-button"
+                  type="button"
+                  data-copy='export const config = {
+  hostname: "127.0.0.1",
+  port: 4444,
+  capabilities: [{
+    "tauri:options": {
+      application: "./target/debug/my-app",
+    },
+  }],
+};'
+                >
+                  Copy
+                </button>
+              </div>
+              <pre><code>export const config = {
+  hostname: "127.0.0.1",
+  port: 4444,
+  capabilities: [{
+    "tauri:options": {
+      application: "./target/debug/my-app",
+    },
+  }],
+};</code></pre>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section section-shell" id="protocol">
+        <div class="heading-group reveal">
+          <p class="eyebrow">Current protocol only</p>
+          <h2>Strict W3C capability processing.</h2>
+          <p>
+            The driver merges <code>alwaysMatch</code> with one compatible
+            <code>firstMatch</code> candidate.
+            <code>desiredCapabilities</code> and launcher aliases are rejected.
+          </p>
+        </div>
+        <div class="table-wrap reveal">
+          <table>
+            <caption>
+              Supported
+              <code>tauri:options</code>
+              fields
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Type</th>
+                <th scope="col">Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><code>application</code></th>
+                <td>string · required</td>
+                <td>Path to the current test-enabled executable.</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>args</code></th>
+                <td>string[]</td>
+                <td>Arguments passed directly to the app process.</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>env</code></th>
+                <td>object</td>
+                <td>String environment values scoped to this session.</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>cwd</code></th>
+                <td>string</td>
+                <td>Working directory for the app process.</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>startupTimeout</code></th>
+                <td>integer · ms</td>
+                <td>
+                  Maximum time to bind the plugin and verify JavaScript
+                  responsiveness.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="compatibility-grid">
+          <article class="compatibility-card reveal">
+            <span>macOS</span>
+            <h3>WKWebView</h3>
+            <p>
+              Native JavaScript evaluation, snapshots, PDF output, dialogs, and
+              window control.
+            </p>
+          </article>
+          <article class="compatibility-card reveal">
+            <span>Windows</span>
+            <h3>WebView2</h3>
+            <p>
+              Serialized script execution, native message callbacks, actions,
+              and process-tree cleanup.
+            </p>
+          </article>
+          <article class="compatibility-card reveal">
+            <span>Linux</span>
+            <h3>WebKitGTK 4.1</h3>
+            <p>
+              WebKit automation under a real display or Xvfb, with native
+              screenshots and PDF.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section section-shell" id="security">
+        <div class="security-layout">
+          <div class="heading-group reveal">
+            <p class="eyebrow">Secure by construction</p>
+            <h2>Local automation is still privileged automation.</h2>
+            <p>
+              The driver can launch an executable and supply environment
+              variables, so the network boundary and build boundary are
+              intentionally narrow.
+            </p>
+          </div>
+          <dl class="security-list reveal">
+            <div>
+              <dt>Loopback only</dt>
+              <dd>
+                The public driver and private plugin never bind to remote
+                interfaces.
+              </dd>
+            </div>
+            <div>
+              <dt>Per-session token</dt>
+              <dd>
+                The embedded endpoint rejects requests without its unguessable
+                bearer token.
+              </dd>
+            </div>
+            <div>
+              <dt>Ephemeral port</dt>
+              <dd>
+                The app binds port zero and publishes the actual listener only
+                after it is ready.
+              </dd>
+            </div>
+            <div>
+              <dt>Inert by default</dt>
+              <dd>
+                Without the automation launch environment, the plugin registers
+                no webview handlers and opens no server.
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section section-shell" id="reliability">
+        <div class="heading-group reveal">
+          <p class="eyebrow">Reliability model</p>
+          <h2>Failures become bounded, observable outcomes.</h2>
+        </div>
+        <div class="reliability-grid">
+          <article class="metric-card reveal">
+            <strong>0</strong>
+            <span>reserved-port race windows</span>
+            <p>The plugin owns the listener before it announces readiness.</p>
+          </article>
+          <article class="metric-card reveal">
+            <strong>1</strong>
+            <span>command at a time per session</span>
+            <p>Concurrent client calls cannot corrupt native script state.</p>
+          </article>
+          <article class="metric-card reveal">
+            <strong>100 ms</strong>
+            <span>crash reaper interval</span>
+            <p>
+              Dead apps release session capacity without waiting for another
+              command.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section section-shell faq" id="faq">
+        <div class="heading-group reveal">
+          <p class="eyebrow">Questions</p>
+          <h2>Operational details.</h2>
+        </div>
+        <div class="faq-list reveal">
+          <details>
+            <summary>Can I use this with an existing WebDriver client?</summary>
+            <p>
+              Yes. The public endpoint uses the current W3C protocol.
+              WebdriverIO, Selenium, and Fantoccini can all create sessions with
+              <code>tauri:options</code>.
+            </p>
+          </details>
+          <details>
+            <summary>Does it ship in my production app?</summary>
+            <p>
+              It should not. Keep the plugin optional and enable it only in a
+              dedicated test build. It also remains inert unless the driver
+              supplies the automation environment and token.
+            </p>
+          </details>
+          <details>
+            <summary>Can tests run concurrently?</summary>
+            <p>
+              Yes. Each session has its own app process, private plugin
+              endpoint, token, command queue, and isolated automation directory.
+              Set <code>--max-sessions</code> according to runner capacity.
+            </p>
+          </details>
+          <details>
+            <summary>Can it control native operating-system dialogs?</summary>
+            <p>
+              WebDriver controls the webview, not OS-owned surfaces such as a
+              native file picker. In an e2e build, use
+              <code>automation_enabled()</code> to expose a deterministic
+              test-only command or fixture path for that boundary.
+            </p>
+          </details>
+          <details>
+            <summary>What happens when the app crashes?</summary>
+            <p>
+              The driver notices the process exit in the background, removes the
+              session, releases capacity, and reports an invalid or failed
+              session instead of poisoning future tests.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <section class="closing section-shell reveal">
+        <div>
+          <p class="eyebrow">Ready to test the whole app?</p>
+          <h2>Use the tools your team already knows.</h2>
+        </div>
+        <a class="text-action" href="https://github.com/zhom/tauri-wg"
+          >Read the source <span aria-hidden="true">↗</span></a
+        >
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="section-shell footer-inner">
+        <div>
+          <a class="wordmark" href="#top">
+            <span class="wordmark-mark" aria-hidden="true">TW</span>
+            <span>Tauri WebDriver</span>
+          </a>
+          <p>Native end-to-end testing for current Tauri applications.</p>
+        </div>
+        <nav aria-label="Footer navigation">
+          <a href="https://crates.io/crates/tauri-cross-platform-webdriver"
+            >crates.io</a
+          >
+          <a href="https://docs.rs/tauri-cross-platform-webdriver">docs.rs</a>
+          <a href="https://github.com/zhom/tauri-wg">GitHub</a>
+          <a href="https://github.com/zhom/tauri-wg/blob/main/SECURITY.md"
+            >Security</a
+          >
+        </nav>
+        <p class="copyright">
+          MIT · © <span id="year">2026</span> Internet Technology Services LLC
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

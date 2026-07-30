@@ -1,0 +1,5 @@
+/target/
+/tests/fixture/src-tauri/target/
+/tests/fixture/src-tauri/gen/
+.DS_Store
+*.log
