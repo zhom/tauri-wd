@@ -54,15 +54,15 @@ objc2-web-kit = { version = "0.3.2", features = [
 ] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-webview2-com = "0.38.2"
-windows = { version = "0.61.3", features = [
+webview2-com = "0.39.1"
+windows = { version = "0.62.2", features = [
     "Win32_System_Com",
     "Win32_System_WinRT",
 ] }
-windows-core = "0.61.2"
+windows-core = "0.62.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-cairo-rs = { version = "0.18.5", features = ["png"] }
+cairo-rs = { version = "0.21.5", features = ["png"] }
 glib = "0.21.5"
 gtk = "0.18.2"
 javascriptcore-rs = "1.1.2"

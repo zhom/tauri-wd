@@ -18,7 +18,7 @@ authors = ["Internet Technology Services LLC"]
 [workspace.dependencies]
 async-trait = "0.1.89"
 axum = "0.8.9"
-base64 = "0.22.1"
+base64 = "0.23.0"
 clap = { version = "4.6.2", features = ["derive"] }
 futures-util = "0.3.33"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
