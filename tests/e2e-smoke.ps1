@@ -453,6 +453,15 @@ try {
     } | ConvertTo-Json -Depth 4
     Invoke-RestMethod -Method Post -Uri "$BaseUrl/session/$SessionId/frame" `
         -ContentType "application/json" -Body $FrameRequest | Out-Null
+    Invoke-RestMethod -Method Post -Uri "$BaseUrl/session/$SessionId/timeouts" `
+        -ContentType "application/json" -Body '{"script":5000}' | Out-Null
+    $FrameAsync = Invoke-RestMethod -Method Post `
+        -Uri "$BaseUrl/session/$SessionId/execute/async" `
+        -ContentType "application/json" `
+        -Body '{"script":"arguments[arguments.length-1](\"frame-async\");","args":[]}'
+    if ($FrameAsync.value -ne "frame-async") {
+        throw "Async script callback did not return from iframe context"
+    }
     $FrameShotId = Find-Css "#frame-shot"
     $FrameScreenshot = Invoke-RestMethod `
         -Uri "$BaseUrl/session/$SessionId/element/$FrameShotId/screenshot"
@@ -483,6 +492,8 @@ try {
     }
     Invoke-RestMethod -Method Post -Uri "$BaseUrl/session/$SessionId/frame/parent" `
         -ContentType "application/json" -Body "{}" | Out-Null
+    Invoke-RestMethod -Method Post -Uri "$BaseUrl/session/$SessionId/timeouts" `
+        -ContentType "application/json" -Body '{"script":null}' | Out-Null
 
     $UploadRequest = @{
         using = "css selector"

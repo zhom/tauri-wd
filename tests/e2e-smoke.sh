@@ -519,6 +519,14 @@ SCREENSHOT_HEIGHT=$((H1 * 16777216 + H2 * 65536 + H3 * 256 + H4))
 curl -fsS -X POST -H 'content-type: application/json' \
   -d "{\"id\":{\"element-6066-11e4-a52e-4f735466cecf\":\"$FRAME_ID\"}}" \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/frame" >/dev/null
+curl -fsS -X POST -H 'content-type: application/json' \
+  -d '{"script":5000}' \
+  "http://127.0.0.1:$PORT/session/$SESSION_ID/timeouts" >/dev/null
+FRAME_ASYNC="$(curl -fsS \
+  -H 'content-type: application/json' \
+  -d '{"script":"arguments[arguments.length-1](\"frame-async\");","args":[]}' \
+  "http://127.0.0.1:$PORT/session/$SESSION_ID/execute/async")"
+[[ "$FRAME_ASYNC" == *'"value":"frame-async"'* ]]
 FRAME_SHOT_ID="$(curl -fsS -H 'content-type: application/json' \
   -d '{"using":"css selector","value":"#frame-shot"}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/element" | \
@@ -539,6 +547,9 @@ FRAME_SHOT_COLOR="$(curl -fsS \
 [[ "$FRAME_SHOT_COLOR" == *'"value":[204,0,0,255]'* ]]
 curl -fsS -X POST -H 'content-type: application/json' -d '{}' \
   "http://127.0.0.1:$PORT/session/$SESSION_ID/frame/parent" >/dev/null
+curl -fsS -X POST -H 'content-type: application/json' \
+  -d '{"script":null}' \
+  "http://127.0.0.1:$PORT/session/$SESSION_ID/timeouts" >/dev/null
 
 UPLOAD_RESPONSE="$(curl -fsS \
   -H 'content-type: application/json' \

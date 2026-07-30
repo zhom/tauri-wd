@@ -1,5 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use base64::Engine as _;
@@ -9,10 +10,10 @@ use tauri::{Manager, Runtime, WebviewWindow};
 use tokio::sync::oneshot;
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG, COREWEBVIEW2_PRINT_ORIENTATION_LANDSCAPE,
-    COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT, ICoreWebView2, ICoreWebView2_7, ICoreWebView2_21,
+    COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT, ICoreWebView2_7, ICoreWebView2_21,
     ICoreWebView2CapturePreviewCompletedHandler, ICoreWebView2Environment6,
     ICoreWebView2ExecuteScriptResult, ICoreWebView2PrintToPdfCompletedHandler,
-    ICoreWebView2ScriptDialogOpeningEventHandler, ICoreWebView2WebMessageReceivedEventHandler,
+    ICoreWebView2ScriptDialogOpeningEventHandler,
 };
 use webview2_com::{CoTaskMemPWSTR, ExecuteScriptWithResultCompletedHandler};
 use windows::Win32::Foundation::HGLOBAL;
@@ -25,13 +26,11 @@ use windows_core::BOOL;
 
 use crate::platform::alert_state::{AlertState, AlertStateManager, AlertType, PendingAlert};
 use crate::platform::{
-    FrameId, INTERNAL_COMMAND_TIMEOUT, PlatformExecutor, PrintOptions, await_script_timeout,
-    wrap_script_for_frame_context,
+    FrameId, IMPLICIT_POLL_INTERVAL, INTERNAL_COMMAND_TIMEOUT, PlatformExecutor, PrintOptions,
+    extract_script_result_from_inner, wrap_script_for_frame_context,
 };
 use crate::server::response::WebDriverErrorResponse;
 use crate::webdriver::Timeouts;
-
-const HANDLER_NAME: &str = "webdriver_async";
 
 /// Serializes concurrent WebView2 ExecuteScript calls per webview window.
 /// On Windows, issuing multiple concurrent ExecuteScript calls against the same
@@ -49,44 +48,6 @@ impl ScriptExecutionLocks {
         m.entry(label.to_string())
             .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
             .clone()
-    }
-}
-
-#[derive(Default)]
-pub struct AsyncScriptState {
-    pending: Mutex<HashMap<String, oneshot::Sender<Result<Value, String>>>>,
-    registered_handlers: Mutex<HashSet<String>>,
-}
-
-impl AsyncScriptState {
-    pub fn register(&self, id: String) -> oneshot::Receiver<Result<Value, String>> {
-        let (tx, rx) = oneshot::channel();
-        if let Ok(mut pending) = self.pending.lock() {
-            pending.insert(id, tx);
-        }
-        rx
-    }
-
-    pub fn complete(&self, id: &str, result: Result<Value, String>) {
-        if let Ok(mut pending) = self.pending.lock()
-            && let Some(tx) = pending.remove(id)
-        {
-            let _ = tx.send(result);
-        }
-    }
-
-    pub fn cancel(&self, id: &str) {
-        if let Ok(mut pending) = self.pending.lock() {
-            pending.remove(id);
-        }
-    }
-
-    pub fn mark_handler_registered(&self, label: &str) -> bool {
-        if let Ok(mut handlers) = self.registered_handlers.lock() {
-            !handlers.insert(label.to_string())
-        } else {
-            false
-        }
     }
 }
 
@@ -533,55 +494,80 @@ impl<R: Runtime + 'static> PlatformExecutor<R> for WindowsExecutor<R> {
         let args_json = serde_json::to_string(args)
             .map_err(|e| WebDriverErrorResponse::invalid_argument(&e.to_string()))?;
 
-        let async_id = uuid::Uuid::new_v4().to_string();
-
-        let app = self.window.app_handle().clone();
-        let async_state = app.state::<AsyncScriptState>();
-        let label = self.window.label().to_string();
-
-        if !async_state.mark_handler_registered(&label) {
-            let app_clone = app.clone();
-            let handler_result = self.window.with_webview(move |webview| unsafe {
-                let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-
-                if let Ok(webview2) = webview.controller().CoreWebView2() {
-                    let state = app_clone.state::<AsyncScriptState>();
-                    register_message_handler(&webview2, state.inner());
-                }
-            });
-
-            if let Err(e) = handler_result {
-                return Err(WebDriverErrorResponse::unknown_error(&format!(
-                    "Failed to register message handler: {e}"
-                )));
-            }
-        }
-
-        let rx = async_state.register(async_id.clone());
+        let result_var = format!("__tauri_wd_async_{}", uuid::Uuid::new_v4());
 
         let wrapper = format!(
             r"(function() {{
                 var ELEMENT_KEY = 'element-6066-11e4-a52e-4f735466cecf';
-                function serializeResult(value) {{
-                    if (value === undefined || value === null) return null;
-                    if (value && value.nodeType === 1) {{
-                        var id = (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() :
-                            'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {{
-                                var r = Math.random() * 16 | 0;
-                                return (c === 'x' ? r : (r & 3 | 8)).toString(16);
-                            }});
-                        window['__wd_el_' + id.replace(/-/g, '')] = value;
-                        var ref = {{}}; ref[ELEMENT_KEY] = id; return ref;
+                var SHADOW_KEY = 'shadow-6066-11e4-a52e-4f735466cecf';
+
+                function uuid() {{
+                    if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {{
+                        return globalThis.crypto.randomUUID();
                     }}
-                    if (Array.isArray(value)) return value.map(serializeResult);
-                    if (typeof value === 'object') {{
-                        var object = {{}};
-                        for (var key in value) if (Object.prototype.hasOwnProperty.call(value, key))
-                            object[key] = serializeResult(value[key]);
-                        return object;
-                    }}
-                    return value;
+                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {{
+                        var r = Math.random() * 16 | 0;
+                        return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+                    }});
                 }}
+
+                function storeNode(value, key) {{
+                    window.__tauriWdNodeIds = window.__tauriWdNodeIds || new WeakMap();
+                    var id = window.__tauriWdNodeIds.get(value);
+                    if (!id) {{
+                        id = uuid();
+                        window.__tauriWdNodeIds.set(value, id);
+                    }}
+                    window['__wd_el_' + id.replace(/-/g, '')] = value;
+                    var reference = {{}};
+                    reference[key] = id;
+                    return reference;
+                }}
+
+                function serializeResult(value, seen) {{
+                    if (value === undefined || value === null) return null;
+                    if (typeof value === 'boolean') return value;
+                    if (typeof value === 'number') return isFinite(value) ? value : null;
+                    if (typeof value === 'string') return value;
+                    if (typeof value === 'function' || typeof value === 'symbol') return null;
+                    if (typeof value === 'bigint') {{
+                        throw new TypeError('BigInt is not JSON serializable');
+                    }}
+                    if (value && value.nodeType === 1) {{
+                        return storeNode(value, ELEMENT_KEY);
+                    }}
+                    if (value && value.nodeType === 11 && value.host) {{
+                        return storeNode(value, SHADOW_KEY);
+                    }}
+                    if (typeof value === 'object') {{
+                        if (value[ELEMENT_KEY] || value[SHADOW_KEY]) return value;
+                        seen = seen || new WeakSet();
+                        if (seen.has(value)) throw new TypeError('cyclic object value');
+                        seen.add(value);
+                        if (Array.isArray(value) ||
+                            value instanceof NodeList ||
+                            value instanceof HTMLCollection) {{
+                            var list = Array.from(value).map(function(item) {{
+                                return serializeResult(item, seen);
+                            }});
+                            seen.delete(value);
+                            return list;
+                        }}
+                        var result = {{}};
+                        try {{
+                            for (var key in value) {{
+                                if (Object.prototype.hasOwnProperty.call(value, key)) {{
+                                    result[key] = serializeResult(value[key], seen);
+                                }}
+                            }}
+                        }} finally {{
+                            seen.delete(value);
+                        }}
+                        return result;
+                    }}
+                    return null;
+                }}
+
                 function deserializeArg(arg) {{
                     if (arg === null || arg === undefined) return arg;
                     if (Array.isArray(arg)) return arg.map(deserializeArg);
@@ -599,47 +585,73 @@ impl<R: Runtime + 'static> PlatformExecutor<R> for WindowsExecutor<R> {
                     }}
                     return arg;
                 }}
+
+                var __completed = false;
                 var __done = function(r) {{
-                    window.chrome.webview.postMessage(JSON.stringify({{
-                        handler: '{HANDLER_NAME}',
-                        id: '{async_id}',
-                        result: serializeResult(r),
-                        error: null
-                    }}));
+                    if (__completed) return;
+                    try {{
+                        var serialized = serializeResult(r);
+                        __completed = true;
+                        window['{result_var}'] = {{
+                            __wd_success: true,
+                            __wd_value: serialized
+                        }};
+                    }} catch (e) {{
+                        __completed = true;
+                        window['{result_var}'] = {{
+                            __wd_success: false,
+                            __wd_error: e.message || String(e)
+                        }};
+                    }}
                 }};
-                var __args = {args_json}.map(deserializeArg);
-                __args.push(__done);
+
                 try {{
+                    var __args = {args_json}.map(deserializeArg);
+                    __args.push(__done);
                     (function() {{ {script} }}).apply(null, __args);
                 }} catch (e) {{
-                    window.chrome.webview.postMessage(JSON.stringify({{
-                        handler: '{HANDLER_NAME}',
-                        id: '{async_id}',
-                        result: null,
-                        error: e.message || String(e)
-                    }}));
+                    if (!__completed) {{
+                        __completed = true;
+                        window['{result_var}'] = {{
+                            __wd_success: false,
+                            __wd_error: e.message || String(e)
+                        }};
+                    }}
                 }}
+
+                return undefined;
             }})()"
         );
 
-        // Acquire the per-webview lock and hold it across the entire async script lifecycle.
-        // This prevents another ExecuteScript from preempting the in-flight async JS callback.
+        // Keep all wrapper and polling calls in one serialized WebView2 operation. Every
+        // evaluation is wrapped into the selected frame, so the result remains accessible
+        // even though WebView2's top-level WebMessageReceived event cannot see iframe posts.
         let locks = self.window.state::<ScriptExecutionLocks>();
         let lock = locks.get(self.window.label());
         let _guard = lock.lock().await;
 
-        // Execute the wrapper using the unlocked inner method (we already hold the lock).
         self.evaluate_js_inner(&wrapper).await?;
 
-        // Wait for result with timeout (lock is still held; released when _guard drops).
-        match await_script_timeout(self.timeouts.script_ms, rx).await {
-            Ok(Ok(Ok(value))) => Ok(value),
-            Ok(Ok(Err(error))) => Err(WebDriverErrorResponse::javascript_error(&error, None)),
-            Ok(Err(_)) => Err(WebDriverErrorResponse::unknown_error("Channel closed")),
-            Err(_) => {
-                async_state.cancel(&async_id);
-                Err(WebDriverErrorResponse::script_timeout())
+        let poll_script = format!("window['{result_var}']");
+        let cleanup_script = format!("delete window['{result_var}']");
+        let timeout = self.timeouts.script_ms.map(Duration::from_millis);
+        let start = std::time::Instant::now();
+
+        loop {
+            let poll_result = self.evaluate_js_inner(&poll_script).await?;
+            let inner = poll_result.get("value").cloned().unwrap_or(Value::Null);
+
+            if !inner.is_null() && inner.get("__wd_success").is_some() {
+                let _ = self.evaluate_js_inner(&cleanup_script).await;
+                return extract_script_result_from_inner(&inner);
             }
+
+            if timeout.is_some_and(|timeout| start.elapsed() >= timeout) {
+                let _ = self.evaluate_js_inner(&cleanup_script).await;
+                return Err(WebDriverErrorResponse::script_timeout());
+            }
+
+            tokio::time::sleep(IMPLICIT_POLL_INTERVAL).await;
         }
     }
 }
@@ -650,7 +662,6 @@ type PrintResultSender = Arc<std::sync::Mutex<Option<oneshot::Sender<Result<(), 
 mod handlers {
     #![allow(clippy::inline_always, clippy::ref_as_ptr)]
 
-    use serde_json::Value;
     use webview2_com::Microsoft::Web::WebView2::Win32::{
         COREWEBVIEW2_SCRIPT_DIALOG_KIND_ALERT, COREWEBVIEW2_SCRIPT_DIALOG_KIND_CONFIRM,
         COREWEBVIEW2_SCRIPT_DIALOG_KIND_PROMPT, ICoreWebView2,
@@ -659,14 +670,11 @@ mod handlers {
         ICoreWebView2PrintToPdfCompletedHandler, ICoreWebView2PrintToPdfCompletedHandler_Impl,
         ICoreWebView2ScriptDialogOpeningEventArgs, ICoreWebView2ScriptDialogOpeningEventHandler,
         ICoreWebView2ScriptDialogOpeningEventHandler_Impl,
-        ICoreWebView2WebMessageReceivedEventArgs, ICoreWebView2WebMessageReceivedEventHandler,
-        ICoreWebView2WebMessageReceivedEventHandler_Impl,
     };
     use windows::core::{Interface, implement};
 
     use super::{
-        AlertState, AlertType, AsyncScriptState, CaptureResultSender, HANDLER_NAME, PendingAlert,
-        PrintResultSender, SendableComPtr,
+        AlertState, AlertType, CaptureResultSender, PendingAlert, PrintResultSender, SendableComPtr,
     };
     use crate::platform::alert_state::AlertResponse;
     use std::sync::Arc;
@@ -780,84 +788,6 @@ mod handlers {
                 && let Some(tx) = guard.take()
             {
                 let _ = tx.send(response);
-            }
-            Ok(())
-        }
-    }
-
-    #[implement(ICoreWebView2WebMessageReceivedEventHandler)]
-    pub struct WebMessageReceivedHandler {
-        state_ptr: *const AsyncScriptState,
-    }
-
-    // SAFETY: The state pointer is valid for the lifetime of the app (managed by Tauri)
-    unsafe impl Send for WebMessageReceivedHandler {}
-    unsafe impl Sync for WebMessageReceivedHandler {}
-
-    impl WebMessageReceivedHandler {
-        pub fn new(state: &AsyncScriptState) -> Self {
-            Self {
-                state_ptr: state as *const AsyncScriptState,
-            }
-        }
-    }
-
-    impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageReceivedHandler_Impl {
-        fn Invoke(
-            &self,
-            _sender: windows::core::Ref<'_, ICoreWebView2>,
-            args: windows::core::Ref<'_, ICoreWebView2WebMessageReceivedEventArgs>,
-        ) -> windows::core::Result<()> {
-            unsafe {
-                let state_ptr = self.state_ptr;
-                if state_ptr.is_null() {
-                    tracing::error!("AsyncScriptState pointer is null");
-                    return Ok(());
-                }
-                let state = &*state_ptr;
-
-                let Some(args_owned) = args.clone() else {
-                    return Ok(());
-                };
-                let mut msg_ptr = windows::core::PWSTR::null();
-                if args_owned.WebMessageAsJson(&raw mut msg_ptr).is_err() {
-                    return Ok(());
-                }
-                let msg_text = msg_ptr.to_string().unwrap_or_default();
-
-                // `WebMessageAsJson` returns the message as a JSON value.
-                // Since JS sends `JSON.stringify({...})`, the message is a string,
-                // so we get a JSON-encoded string (with extra quotes).
-                // First parse to get the inner string, then parse that as our object.
-                let inner_str: String = match serde_json::from_str(&msg_text) {
-                    Ok(s) => s,
-                    Err(_) => return Ok(()),
-                };
-                let msg: Value = match serde_json::from_str(&inner_str) {
-                    Ok(v) => v,
-                    Err(_) => return Ok(()),
-                };
-
-                let handler = msg.get("handler").and_then(Value::as_str);
-                if handler != Some(HANDLER_NAME) {
-                    return Ok(());
-                }
-
-                let Some(async_id) = msg.get("id").and_then(Value::as_str) else {
-                    tracing::warn!("Message missing 'id' field");
-                    return Ok(());
-                };
-                let async_id = async_id.to_string();
-
-                if let Some(error) = msg.get("error").and_then(Value::as_str)
-                    && !error.is_empty()
-                {
-                    state.complete(&async_id, Err(error.to_string()));
-                    return Ok(());
-                }
-
-                let result = msg.get("result").cloned().unwrap_or(Value::Null);
-                state.complete(&async_id, Ok(result));
             }
             Ok(())
         }
@@ -991,21 +921,4 @@ mod handlers {
     }
 }
 
-use handlers::{CapturePreviewHandler, ScriptDialogOpeningHandler, WebMessageReceivedHandler};
-
-/// Register the `WebMessage` handler for a webview.
-///
-/// # Safety
-/// Must be called from a COM-initialized thread with a valid webview.
-unsafe fn register_message_handler(webview: &ICoreWebView2, state: &AsyncScriptState) {
-    let handler: ICoreWebView2WebMessageReceivedEventHandler =
-        WebMessageReceivedHandler::new(state).into();
-
-    // We don't need to store the token since we never remove the handler
-    let mut token = unsafe { std::mem::zeroed() };
-    if let Err(e) = unsafe { webview.add_WebMessageReceived(&handler, &raw mut token) } {
-        tracing::error!("Failed to register WebMessageReceived handler: {e:?}");
-    } else {
-        tracing::debug!("Registered native message handler for webview");
-    }
-}
+use handlers::{CapturePreviewHandler, ScriptDialogOpeningHandler};

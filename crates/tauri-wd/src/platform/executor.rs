@@ -18,8 +18,9 @@ use crate::platform::alert_state::{AlertStateManager, AlertType};
 use crate::server::response::WebDriverErrorResponse;
 
 pub const INTERNAL_COMMAND_TIMEOUT: Duration = Duration::from_secs(30);
-const IMPLICIT_POLL_INTERVAL: Duration = Duration::from_millis(50);
+pub(crate) const IMPLICIT_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
+#[cfg(any(target_os = "macos", target_os = "linux", test))]
 pub async fn await_script_timeout<F, T>(timeout_ms: Option<u64>, future: F) -> Result<T, ()>
 where
     F: Future<Output = T>,
@@ -1670,7 +1671,7 @@ pub trait PlatformExecutor<R: Runtime>: Send + Sync {
 
     /// Execute asynchronous JavaScript with callback.
     ///
-    /// Each platform must implement this using native message handlers.
+    /// Each platform must implement this using its native asynchronous script support.
     async fn execute_async_script(
         &self,
         script: &str,
@@ -2475,7 +2476,9 @@ fn extract_value(result: &Value) -> Result<Value, WebDriverErrorResponse> {
     Ok(Value::Null)
 }
 
-fn extract_script_result_from_inner(inner: &Value) -> Result<Value, WebDriverErrorResponse> {
+pub(crate) fn extract_script_result_from_inner(
+    inner: &Value,
+) -> Result<Value, WebDriverErrorResponse> {
     if let Some(success) = inner.get("__wd_success").and_then(Value::as_bool) {
         if success {
             return Ok(inner.get("__wd_value").cloned().unwrap_or(Value::Null));

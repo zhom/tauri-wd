@@ -85,8 +85,6 @@ pub fn init_with_port<R: Runtime>(port: u16) -> TauriPlugin<R> {
             let ready_file = required_env(READY_FILE_ENV_VAR)?;
 
             #[cfg(target_os = "windows")]
-            app.manage(platform::AsyncScriptState::default());
-            #[cfg(target_os = "windows")]
             app.manage(platform::ScriptExecutionLocks::default());
             app.manage(platform::AlertStateManager::default());
 
