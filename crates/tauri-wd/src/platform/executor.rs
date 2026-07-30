@@ -859,7 +859,7 @@ pub trait PlatformExecutor<R: Runtime>: Send + Sync {
                 }} else if (!wasActive) {{
                     el.focus();
                 }}
-                if (ownerDocument.activeElement !== el) {{
+                if (!documentTarget && ownerDocument.activeElement !== el) {{
                     throw new Error('__tauri_wd_error__:element not interactable: element cannot receive keyboard focus');
                 }}
                 if (!wasActive && (textInput || textarea)) {{
