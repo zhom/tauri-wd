@@ -4,7 +4,7 @@ members = ["crates/tauri-wd"]
 exclude = ["tests/fixture/src-tauri"]
 
 [workspace.package]
-version = "0.1.8"
+version = "0.1.9"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
