@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if ! git diff --quiet -- Cargo.toml crates/tauri-wd/Cargo.toml tests/fixture/src-tauri/Cargo.toml; then
+  echo "error: stage or discard Cargo.toml changes before committing" >&2
+  exit 1
+fi
+
+echo "Synchronizing Cargo lockfiles..."
+
+cargo metadata --format-version 1 --manifest-path Cargo.toml >/dev/null
+cargo metadata --format-version 1 \
+  --manifest-path tests/fixture/src-tauri/Cargo.toml >/dev/null
+
+git add -- Cargo.lock tests/fixture/src-tauri/Cargo.lock
+
+cargo metadata --locked --format-version 1 --manifest-path Cargo.toml >/dev/null
+cargo metadata --locked --format-version 1 \
+  --manifest-path tests/fixture/src-tauri/Cargo.toml >/dev/null
+
+echo "Cargo lockfiles synchronized and staged."

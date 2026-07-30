@@ -2,6 +2,16 @@
 
 Install the current stable Rust toolchain and the native Tauri prerequisites for your operating system.
 
+Enable the repository hooks once after cloning:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+The pre-commit hook refreshes and stages both the workspace and native fixture
+lockfiles, so version and dependency changes cannot leave either Cargo workspace
+stale.
+
 Before opening a pull request, run:
 
 ```sh
