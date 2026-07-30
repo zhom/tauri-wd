@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${TAURI_WD_TEST_PORT:-4464}"
+STARTUP_TIMEOUT="${TAURI_WD_TEST_STARTUP_TIMEOUT:-90}"
 TARGET_DIR="$ROOT/target"
 DRIVER="$TARGET_DIR/debug/tauri-wd"
 APP="$TARGET_DIR/debug/webdriver-fixture"
@@ -11,7 +12,7 @@ cargo build --manifest-path "$ROOT/Cargo.toml" --package tauri-cross-platform-we
 CARGO_TARGET_DIR="$TARGET_DIR" cargo build \
   --manifest-path "$ROOT/tests/fixture/src-tauri/Cargo.toml"
 
-"$DRIVER" --port "$PORT" --startup-timeout 30 --log warn &
+"$DRIVER" --port "$PORT" --startup-timeout "$STARTUP_TIMEOUT" --log warn &
 DRIVER_PID=$!
 SESSION_ID=""
 UPLOAD_FILE="$(mktemp)"

@@ -2,6 +2,11 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $Port = if ($env:TAURI_WD_TEST_PORT) { $env:TAURI_WD_TEST_PORT } else { "4464" }
+$StartupTimeout = if ($env:TAURI_WD_TEST_STARTUP_TIMEOUT) {
+    $env:TAURI_WD_TEST_STARTUP_TIMEOUT
+} else {
+    "90"
+}
 $TargetDir = Join-Path $Root "target"
 $Driver = Join-Path $TargetDir "debug/tauri-wd.exe"
 $App = Join-Path $TargetDir "debug/webdriver-fixture.exe"
@@ -46,7 +51,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Fixture build failed" }
 
     $DriverProcess = Start-Process -FilePath $Driver `
-        -ArgumentList "--port", $Port, "--startup-timeout", "30", "--log", "warn" `
+        -ArgumentList "--port", $Port, "--startup-timeout", $StartupTimeout, "--log", "warn" `
         -PassThru -NoNewWindow
 
     $Ready = $false

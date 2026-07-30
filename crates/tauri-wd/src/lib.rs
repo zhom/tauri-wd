@@ -7,7 +7,7 @@
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 compile_error!("tauri-wd supports macOS, Windows, and Linux");
 
-use std::io;
+use std::{io, time::Duration};
 
 use tauri::{
     Manager, Runtime,
@@ -23,6 +23,7 @@ pub const PORT_ENV_VAR: &str = "TAURI_WEBDRIVER_PORT";
 pub const TOKEN_ENV_VAR: &str = "TAURI_WEBDRIVER_TOKEN";
 pub const READY_FILE_ENV_VAR: &str = "TAURI_WEBDRIVER_READY_FILE";
 pub const PROFILE_DIR_ENV_VAR: &str = "TAURI_AUTOMATION_PROFILE_DIR";
+pub const STARTUP_TIMEOUT_ENV_VAR: &str = "TAURI_WEBDRIVER_STARTUP_TIMEOUT_MS";
 
 /// Returns whether this process was launched specifically for automation.
 #[must_use]
@@ -40,6 +41,15 @@ pub fn automation_profile_dir() -> Option<std::path::PathBuf> {
     automation_enabled()
         .then(|| std::env::var_os(PROFILE_DIR_ENV_VAR).map(std::path::PathBuf::from))
         .flatten()
+}
+
+fn startup_timeout() -> Duration {
+    std::env::var(STARTUP_TIMEOUT_ENV_VAR)
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .map(Duration::from_millis)
+        .unwrap_or(Duration::from_secs(30))
 }
 
 /// Initializes the plugin. The server only starts in an automation process.

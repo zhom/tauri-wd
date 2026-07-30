@@ -125,6 +125,7 @@ impl AppLauncher for NativeLauncher {
         let ready_file_env = ready_file.clone();
         let profile_dir_env = profile_dir.clone();
         let token_env = token.clone();
+        let startup_timeout_ms = startup_timeout.as_millis().to_string();
 
         let mut command = CommandWrap::with_new(application.as_os_str(), move |command| {
             command
@@ -136,6 +137,7 @@ impl AppLauncher for NativeLauncher {
                 .env("TAURI_WEBDRIVER_TOKEN", token_env)
                 .env("TAURI_WEBDRIVER_READY_FILE", ready_file_env)
                 .env("TAURI_AUTOMATION_PROFILE_DIR", profile_dir_env)
+                .env("TAURI_WEBDRIVER_STARTUP_TIMEOUT_MS", startup_timeout_ms)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
             if let Some(cwd) = cwd {

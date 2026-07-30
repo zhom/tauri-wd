@@ -9,14 +9,14 @@ use tauri::Runtime;
 use crate::server::AppState;
 use crate::server::handlers::timeouts::parse_timeout_value;
 use crate::server::response::{WebDriverErrorResponse, WebDriverResponse, WebDriverResult};
+use crate::startup_timeout;
 use crate::webdriver::{PageLoadStrategy, Timeouts};
 
 async fn wait_for_window<R: Runtime>(
     state: &AppState<R>,
-    timeout_ms: u64,
+    timeout: std::time::Duration,
 ) -> Result<String, WebDriverErrorResponse> {
     let start = std::time::Instant::now();
-    let timeout = std::time::Duration::from_millis(timeout_ms);
     let poll_interval = std::time::Duration::from_millis(100);
 
     loop {
@@ -121,7 +121,7 @@ pub async fn create<R: Runtime + 'static>(
             requested_timeouts.script_ms = parse_timeout_value(value, "script", true)?;
         }
     }
-    let initial_window = wait_for_window(&state, 10_000).await?;
+    let initial_window = wait_for_window(&state, startup_timeout()).await?;
 
     let executor =
         state.get_executor_for_window(&initial_window, Timeouts::default(), Vec::new())?;
