@@ -249,7 +249,8 @@ jobs:
             fi
 
             for attempt in 1 2 3; do
-              cargo publish -p "$crate" --locked || true
+              # `verify` already builds this package with the required Linux libraries.
+              cargo publish -p "$crate" --locked --no-verify || true
               for _ in $(seq 1 30); do
                 state="$(publication_state "$crate")"
                 if [ "$state" = published ]; then
