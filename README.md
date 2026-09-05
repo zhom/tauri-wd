@@ -1,19 +1,8 @@
-<div align="center">
-  <img src="https://zhom.github.io/tauri-wd/favicon.svg" alt="tauri-wd" width="72">
-  <h1>tauri-wd</h1>
-  <strong>Reliable end-to-end testing for Tauri on every desktop platform.</strong>
-  <br>
-  <a href="https://zhom.github.io/tauri-wd/">Website</a>
-</div>
-<br>
+# tauri-wd
 
-<p align="center">
-  <a href="https://crates.io/crates/tauri-wd"><img alt="Crates.io" src="https://img.shields.io/crates/v/tauri-wd"></a>
-  <a href="https://github.com/zhom/tauri-wd/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zhom/tauri-wd/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-</p>
+Reliable end-to-end testing for Tauri on every desktop platform.
 
-<img alt="tauri-wd supports macOS, Windows, and Linux" src="https://zhom.github.io/tauri-wd/social-card.png">
+[Website](https://zhom.github.io/tauri-wd/)
 
 ## Features
 
