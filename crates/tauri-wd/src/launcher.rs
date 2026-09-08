@@ -127,6 +127,7 @@ impl AppLauncher for NativeLauncher {
         let ready_file_env = ready_file.clone();
         let profile_dir_env = profile_dir.clone();
         let token_env = token.clone();
+        let headless = options.headless;
         let startup_timeout_ms = startup_timeout.as_millis().to_string();
 
         let mut command = CommandWrap::with_new(application.as_os_str(), move |command| {
@@ -142,6 +143,16 @@ impl AppLauncher for NativeLauncher {
                 .env("TAURI_WEBDRIVER_STARTUP_TIMEOUT_MS", startup_timeout_ms)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
+            if headless {
+                // Read by the in-app plugin (see crate::HEADLESS_ENV_VAR): it
+                // keeps the webview window off the user's screen and, on macOS,
+                // runs the app as an accessory so the test never steals focus.
+                command.env(crate::HEADLESS_ENV_VAR, "true");
+            } else {
+                // Never inherited: a value exported in the shell (or CI job)
+                // that started the driver must not make every session headless.
+                command.env_remove(crate::HEADLESS_ENV_VAR);
+            }
             if let Some(cwd) = cwd {
                 command.current_dir(cwd);
             }

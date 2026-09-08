@@ -11,6 +11,7 @@ Reliable end-to-end testing for Tauri on every desktop platform.
 - Elements, actions, scripts, frames, shadow DOM, dialogs, cookies, screenshots, and PDF
 - Isolated sessions, serialized commands, crash recovery, bounded payloads, and full process-tree cleanup
 - Loopback-only endpoints with private per-session authentication
+- Headless sessions that never show a window or steal focus
 
 ## Install
 
@@ -49,6 +50,51 @@ capabilities: [
 ```
 
 Build the app with `--features e2e`. Never enable the plugin in a production binary.
+
+## Headless
+
+Run a session without a visible window, so a suite never pops up a window or
+steals focus while you work. Add `headless` to `tauri:options`:
+
+```js
+capabilities: [
+  {
+    "tauri:options": {
+      application: "./target/debug/my-app",
+      headless: true,
+    },
+  },
+];
+```
+
+On macOS the plugin keeps the window on screen but fully transparent,
+click-through and never focused, floating above other windows on every Space.
+That is deliberate: a hidden or off-screen window makes WebKit suspend rendering
+and `requestAnimationFrame`, which stalls any animation-gated test. The webview
+still lays out, runs scripts, receives synthesized input, and renders for
+screenshots, so every WebDriver command behaves as it does with a visible
+window. On Windows and Linux the window is hidden instead, and the page's
+`requestAnimationFrame` may pause while it is; tests that wait on animations
+there should not rely on headless yet.
+
+The plugin only runs once a webview is ready, so it cannot undo what creating
+the window already did. A window built visible and focused activates the app
+and takes key focus for that moment, and tao resets the activation policy at
+launch, so a Dock tile can appear. For a session that changes nothing on your
+screen, do both of these in the app itself when `tauri_wd::headless_enabled()`:
+
+```rust
+let headless = tauri_wd::headless_enabled();
+#[cfg(target_os = "macos")]
+if headless {
+    // Through `App`, so it lands in tao's own launch state.
+    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+}
+tauri::WebviewWindowBuilder::new(app, "main", Default::default())
+    .visible(!headless)
+    .focused(!headless)
+    .build()?;
+```
 
 ## Platforms
 

@@ -11,7 +11,14 @@ use serde_json::{Map, Value, json};
 use crate::error::WebDriverError;
 
 const TAURI_OPTIONS: &str = "tauri:options";
-const ALLOWED_TAURI_OPTIONS: &[&str] = &["application", "args", "env", "cwd", "startupTimeout"];
+const ALLOWED_TAURI_OPTIONS: &[&str] = &[
+    "application",
+    "args",
+    "env",
+    "cwd",
+    "startupTimeout",
+    "headless",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchOptions {
@@ -20,6 +27,13 @@ pub struct LaunchOptions {
     pub env: BTreeMap<String, String>,
     pub cwd: Option<PathBuf>,
     pub startup_timeout: Option<Duration>,
+    /// Run the app without a visible window. On macOS the plugin keeps the
+    /// window on screen but transparent, click-through and never key (so WebKit
+    /// keeps rendering) and runs the app as an accessory; on Windows and Linux
+    /// it hides the window. The webview still lays out, runs scripts, receives
+    /// synthesized input, and renders for screenshots. Off by default; opt in
+    /// per session with `tauri:options.headless`.
+    pub headless: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -197,6 +211,16 @@ fn parse_launch_options(options: &Map<String, Value>) -> Result<LaunchOptions, W
         }
     };
 
+    let headless = match options.get("headless") {
+        None => false,
+        Some(Value::Bool(value)) => *value,
+        Some(_) => {
+            return Err(WebDriverError::invalid_argument(
+                "tauri:options.headless must be a boolean",
+            ));
+        }
+    };
+
     let startup_timeout = match options.get("startupTimeout") {
         None => None,
         Some(Value::Number(value)) => {
@@ -220,6 +244,7 @@ fn parse_launch_options(options: &Map<String, Value>) -> Result<LaunchOptions, W
         env,
         cwd,
         startup_timeout,
+        headless,
     })
 }
 
@@ -280,7 +305,8 @@ mod tests {
                         "args": ["--profile", "test"],
                         "env": {"MODE": "e2e"},
                         "cwd": "/tmp",
-                        "startupTimeout": 1200
+                        "startupTimeout": 1200,
+                        "headless": true
                     }
                 }]
             }
@@ -298,6 +324,7 @@ mod tests {
             request.launch.startup_timeout,
             Some(Duration::from_millis(1200))
         );
+        assert!(request.launch.headless);
         let forwarded: Value =
             serde_json::from_slice(&request.webdriver_body).expect("forwarded JSON");
         assert!(
@@ -364,6 +391,40 @@ mod tests {
         }))
         .expect_err("unknown option");
         assert!(unknown.to_string().contains("Unknown tauri:options field"));
+    }
+
+    #[test]
+    fn headless_defaults_to_false_and_accepts_a_boolean() {
+        let default = parse(json!({
+            "capabilities": {
+                "alwaysMatch": {"tauri:options": {"application": "app"}}
+            }
+        }))
+        .expect("valid options");
+        assert!(!default.launch.headless, "headless is off unless asked for");
+
+        let enabled = parse(json!({
+            "capabilities": {
+                "alwaysMatch": {
+                    "tauri:options": {"application": "app", "headless": true}
+                }
+            }
+        }))
+        .expect("valid options");
+        assert!(enabled.launch.headless);
+    }
+
+    #[test]
+    fn rejects_a_non_boolean_headless() {
+        let error = parse(json!({
+            "capabilities": {
+                "alwaysMatch": {
+                    "tauri:options": {"application": "app", "headless": "yes"}
+                }
+            }
+        }))
+        .expect_err("invalid options");
+        assert!(error.to_string().contains("headless must be a boolean"));
     }
 
     #[test]
