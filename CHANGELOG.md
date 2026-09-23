@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 (2026-09-23)
+
+### Fixes
+
+- headless focus
+
+### Maintenance
+
+- version bump
+
+
 ## 0.1.12
 
 - Add headless sessions. Pass `tauri:options.headless: true` and the driver runs
