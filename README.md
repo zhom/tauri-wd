@@ -77,23 +77,35 @@ window. On Windows and Linux the window is hidden instead, and the page's
 `requestAnimationFrame` may pause while it is; tests that wait on animations
 there should not rely on headless yet.
 
-The plugin only runs once a webview is ready, so it cannot undo what creating
-the window already did. A window built visible and focused activates the app
-and takes key focus for that moment, and tao resets the activation policy at
-launch, so a Dock tile can appear. For a session that changes nothing on your
-screen, do both of these in the app itself when `tauri_wd::headless_enabled()`:
+On macOS the plugin also stops the app from activating, before the app finishes
+launching. tao activates the app at launch and on `set_focus`, and wry does so
+for every new webview, hidden or not; without this the app becomes the front
+app and takes your keyboard focus.
+
+The plugin conceals a window only once its webview is ready, so a window built
+visible is on screen until then. tao also applies the regular activation policy
+at launch unless the app set another one before `run`, so a Dock tile can
+appear. For a session that changes nothing on your screen, do both of these in
+the app itself when `tauri_wd::headless_enabled()`:
 
 ```rust
 let headless = tauri_wd::headless_enabled();
+let mut app = tauri::Builder::default()
+    .plugin(tauri_wd::init())
+    .setup(move |app| {
+        tauri::WebviewWindowBuilder::new(app, "main", Default::default())
+            .visible(!headless)
+            .build()?;
+        Ok(())
+    })
+    .build(tauri::generate_context!())?;
+// On the built `App` before `run`, so it lands in tao's own launch state; in
+// `setup` it is already too late.
 #[cfg(target_os = "macos")]
 if headless {
-    // Through `App`, so it lands in tao's own launch state.
     app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 }
-tauri::WebviewWindowBuilder::new(app, "main", Default::default())
-    .visible(!headless)
-    .focused(!headless)
-    .build()?;
+app.run(|_, _| {});
 ```
 
 ## Platforms

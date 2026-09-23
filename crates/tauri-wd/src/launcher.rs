@@ -146,7 +146,7 @@ impl AppLauncher for NativeLauncher {
             if headless {
                 // Read by the in-app plugin (see crate::HEADLESS_ENV_VAR): it
                 // keeps the webview window off the user's screen and, on macOS,
-                // runs the app as an accessory so the test never steals focus.
+                // stops the app from activating, so the test never steals focus.
                 command.env(crate::HEADLESS_ENV_VAR, "true");
             } else {
                 // Never inherited: a value exported in the shell (or CI job)

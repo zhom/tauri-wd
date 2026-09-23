@@ -33,7 +33,8 @@ pub const PROFILE_DIR_ENV_VAR: &str = "TAURI_AUTOMATION_PROFILE_DIR";
 pub const STARTUP_TIMEOUT_ENV_VAR: &str = "TAURI_WEBDRIVER_STARTUP_TIMEOUT_MS";
 /// Set by the driver when a session asks for `tauri:options.headless`. The
 /// plugin keeps the webview window off the user's screen (see `conceal_window`)
-/// and, on macOS, runs the app as an accessory.
+/// and, on macOS, runs the app as an accessory that never activates (see
+/// `refuse_app_activation`).
 pub const HEADLESS_ENV_VAR: &str = "TAURI_WEBDRIVER_HEADLESS";
 
 /// Conceal a window for a headless session.
@@ -45,9 +46,9 @@ pub const HEADLESS_ENV_VAR: &str = "TAURI_WEBDRIVER_HEADLESS";
 /// click-through, and floated above other windows on every Space, so nothing is
 /// ever shown, input passes through, and -- because nothing ever covers it --
 /// the webview keeps rendering. Focus is never taken: the window is made
-/// non-focusable, `orderFrontRegardless` does not make it key, and the app runs
-/// as an accessory. On Windows and Linux the window is simply hidden, which
-/// pauses `requestAnimationFrame` there; see the README.
+/// non-focusable, `orderFrontRegardless` does not make it key, and the app never
+/// activates (see `refuse_app_activation`). On Windows and Linux the window is
+/// simply hidden, which pauses `requestAnimationFrame` there; see the README.
 ///
 /// A macro, not a function, because `on_webview_ready` yields a `Window` while
 /// `webview_windows()` yields a `WebviewWindow`; both expose these inherent
@@ -73,7 +74,7 @@ macro_rules! conceal_window {
                     // windows and onto every Space so nothing ever covers it (it
                     // stays unoccluded, so WebKit keeps rendering), and order it
                     // in with `orderFrontRegardless`, which does NOT make it key,
-                    // so the accessory app never steals focus. These are all
+                    // so ordering it in never takes focus. These are all
                     // public AppKit selectors and work across macOS versions;
                     // the old private occlusion-detection switch is gone on
                     // macOS 26 and sending it aborts the process.
@@ -118,6 +119,66 @@ macro_rules! conceal_window {
     }};
 }
 
+/// Make this process ignore every request to activate it, for a headless
+/// session on macOS.
+///
+/// Nothing in the stack lets an app opt out of activation: tao calls
+/// `activateIgnoringOtherApps:` when the app finishes launching and on every
+/// `set_focus`, and wry calls `activate` (`activateIgnoringOtherApps:` before
+/// macOS 14) each time it creates a webview, hidden or not. The accessory
+/// policy does not stop any of them, so the app becomes the front process and
+/// takes the user's keyboard focus. Both selectors are overridden on the class
+/// of this process's `NSApplication` (tao's own subclass), so `NSApplication`
+/// itself is unchanged. The plugin setup runs before the event loop starts, so
+/// this is in place before the launch activation and before any webview.
+#[cfg(target_os = "macos")]
+fn refuse_app_activation() {
+    use objc2::runtime::{AnyObject, Bool, Imp, Sel};
+    use objc2::{MainThreadMarker, ffi, sel};
+
+    extern "C-unwind" fn ignore(_: &AnyObject, _: Sel) {}
+    extern "C-unwind" fn ignore_with_flag(_: &AnyObject, _: Sel, _: Bool) {}
+
+    let Some(mtm) = MainThreadMarker::new() else {
+        tracing::warn!("headless: plugin setup is off the main thread; activation stays enabled");
+        return;
+    };
+    let app = objc2_app_kit::NSApplication::sharedApplication(mtm);
+    let class = AnyObject::class(&app);
+    // Safety: each function matches the C signature of the selector it
+    // replaces (receiver, selector, then the `BOOL` flag where there is one).
+    let overrides = unsafe {
+        [
+            (
+                sel!(activate),
+                std::mem::transmute::<extern "C-unwind" fn(&AnyObject, Sel), Imp>(ignore),
+            ),
+            (
+                sel!(activateIgnoringOtherApps:),
+                std::mem::transmute::<extern "C-unwind" fn(&AnyObject, Sel, Bool), Imp>(
+                    ignore_with_flag,
+                ),
+            ),
+        ]
+    };
+    for (selector, imp) in overrides {
+        // `activate` only exists on macOS 14 and later.
+        let Some(method) = class.instance_method(selector) else {
+            continue;
+        };
+        // Safety: `class` is a registered class, and the override reuses the
+        // inherited method's type encoding, which matches its signature.
+        unsafe {
+            ffi::class_replaceMethod(
+                std::ptr::from_ref(class).cast_mut(),
+                selector,
+                imp,
+                ffi::method_getTypeEncoding(method),
+            );
+        }
+    }
+}
+
 /// Returns whether this process was launched specifically for automation.
 #[must_use]
 pub fn automation_enabled() -> bool {
@@ -127,14 +188,15 @@ pub fn automation_enabled() -> bool {
 
 /// Returns whether this automation process was asked to run headless.
 ///
-/// The plugin conceals every webview window once it is ready, but it cannot
-/// undo what creating the window already did: a window built visible and
-/// focused activates the app and takes key focus for the moment before the
-/// plugin runs. An app that wants a headless session to change NOTHING on the
-/// user's screen reads this and creates its main window with `.visible(false)`
-/// (or `.focused(false)`), and on macOS sets `ActivationPolicy::Accessory`
-/// through `App::set_activation_policy` in its own setup, so no Dock tile ever
-/// appears. Every WebDriver command works either way.
+/// On macOS the plugin stops the app from activating before it finishes
+/// launching, so no window, webview or `set_focus` call takes the user's focus.
+/// It conceals every webview window only once it is ready, so a window built
+/// visible is on screen until then. An app that wants a headless session to
+/// change NOTHING on the user's screen reads this and creates its main window
+/// with `.visible(false)`, and on macOS sets `ActivationPolicy::Accessory` with
+/// `App::set_activation_policy` on the built `App` before `App::run`, so no Dock
+/// tile appears (in `setup` it is too late: tao has already applied its launch
+/// policy). Every WebDriver command works either way.
 #[must_use]
 pub fn headless_enabled() -> bool {
     automation_enabled()
@@ -199,13 +261,14 @@ pub fn init_with_port<R: Runtime>(port: u16) -> TauriPlugin<R> {
             );
 
             if headless_enabled() {
-                // macOS: an accessory app has no Dock tile and never becomes
-                // the active application. Set here AND re-applied on
-                // `RunEvent::Ready` below: tao writes its own (regular) policy
-                // back at launch, undoing a value set through the handle before
-                // the event loop starts. A Dock tile that never appears at all
-                // needs the host to set the policy through
-                // `App::set_activation_policy` in its own setup (see README).
+                #[cfg(target_os = "macos")]
+                refuse_app_activation();
+                // macOS: an accessory app has no Dock tile. Set here AND
+                // re-applied on `RunEvent::Ready` below: tao writes its own
+                // (regular) policy back at launch, undoing a value set through
+                // the handle before the event loop starts. A Dock tile that
+                // never appears at all needs the host to set the policy on its
+                // `App` before `App::run` (see README).
                 #[cfg(target_os = "macos")]
                 if let Err(error) = app.set_activation_policy(tauri::ActivationPolicy::Accessory) {
                     tracing::warn!(
