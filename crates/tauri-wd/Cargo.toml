@@ -86,7 +86,7 @@ windows-core = "0.61.2"
 cairo-rs = { version = "0.18.5", features = ["png"] }
 glib = "0.21.5"
 gtk = "0.18.2"
-javascriptcore-rs = "1.1.2"
+javascriptcore-rs = "2.0.0"
 webkit2gtk = "2.0.2"
 
 [build-dependencies]
