@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.2 (2026-10-14)
+
+### Fixes
+
+- build with tauri 2.12
+
+### Maintenance
+
+- version bump
+- check latest deps
+
+
 ## 0.2.2
 
 - Build against Tauri 2.12 and its WebView2 crates (`webview2-com` 0.39,
