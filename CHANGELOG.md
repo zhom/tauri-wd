@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2
+
+- Build against Tauri 2.12 and its WebView2 crates (`webview2-com` 0.39,
+  `windows` 0.62). With an app on Tauri 2.12, 0.2.1 did not compile on Windows.
+  Tauri 2.12.1 is now the minimum.
+- No lint errors with Rust 1.99 (`async-trait` 0.1.92).
+
 ## 0.1.12
 
 - Add headless sessions. Pass `tauri:options.headless: true` and the driver runs
