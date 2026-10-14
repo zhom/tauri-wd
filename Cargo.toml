@@ -13,7 +13,7 @@ homepage = "https://zhom.github.io/tauri-wd/"
 authors = ["Internet Technology Services LLC"]
 
 [workspace.dependencies]
-async-trait = "0.1.89"
+async-trait = "0.1.92"
 axum = "0.8.9"
 base64 = "0.23.0"
 clap = { version = "4.6.2", features = ["derive"] }
@@ -26,7 +26,7 @@ reqwest = { version = "0.13.4", default-features = false, features = [
 ] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
-tauri = "2.11.5"
+tauri = "2.12.1"
 tempfile = "3.27.0"
 thiserror = "2.0.18"
 tokio = { version = "1.53.0", features = [

@@ -6,8 +6,8 @@ rust-version = "1.90"
 publish = false
 
 [build-dependencies]
-tauri-build = "2.6.3"
+tauri-build = "2.7.1"
 
 [dependencies]
-tauri = "2.11.5"
+tauri = "2.12.1"
 tauri-wd = { path = "../../../crates/tauri-wd" }
