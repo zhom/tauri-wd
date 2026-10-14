@@ -60,6 +60,29 @@ jobs:
         shell: pwsh
         run: ./tests/e2e-smoke.ps1
 
+  latest-deps:
+    # An app compiles the plugin against its own Tauri and webview crates. The
+    # lock file alone hides a release that no longer matches the newest ones.
+    name: Latest dependencies (${{ matrix.os }})
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+      - name: Install Linux webview dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+      - run: cargo update
+      - run: cargo check --workspace --all-targets --all-features
+
   msrv:
     name: Rust 1.90
     runs-on: ubuntu-24.04
